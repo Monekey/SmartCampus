@@ -2,6 +2,7 @@
 
 'use strict';
 
+const miniApp = require('./MiniApp');
 /**
  * @param {Egg.EggAppInfo} appInfo app info
  */
@@ -66,6 +67,7 @@ module.exports = appInfo => {
   return {
     ...config,
     ...userConfig,
-    mysql
+    mysql,
+    miniApp
   };
 };
