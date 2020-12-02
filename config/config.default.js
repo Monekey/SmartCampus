@@ -24,6 +24,15 @@ module.exports = appInfo => {
     // myAppName: 'egg',
   };
 
+  config.security = {
+    xframe: {
+      enable: false,
+    },
+    csrf: {
+      enable: false
+    }
+  };
+
   const mysql = {
     clients: {
       // clientId, access the client instance by app.mysql.get('clientId')
@@ -57,6 +66,7 @@ module.exports = appInfo => {
     default: {
 
     },
+
 
     // load into app, default is open
     app: true,

@@ -2,6 +2,8 @@
 
 const BaseService = require('./base');
 
+const WXBizDataCrypt = require('../utils/WXBizDataCrypt');
+
 class wxService extends BaseService {
 
     /**
@@ -36,6 +38,16 @@ class wxService extends BaseService {
             sta: false,
         };
 
+    }
+
+    async decryptData({encryptedData, iv, sessionKey,  appType = 'parentApp'}){
+        const wxApp = this.config.miniApp[appType];
+
+        const pc = new WXBizDataCrypt(wxApp.AppID, sessionKey)
+
+        const data = pc.decryptData(encryptedData , iv);
+        // console.log(data);
+        return data;
     }
 
 }

@@ -16,9 +16,22 @@ class HomeController extends Controller {
   async parentLogin() {
     const query = this.ctx.query;
     // 调用 Service 进行业务处理
-    const result = await this.ctx.service.weixin.code2Session(query.code, 'parentApp')
+    const result = await this.ctx.service.weixin.code2Session(query.code, 'parentApp');
+
+    this.ctx.cookies.set('sessionKey', result.sessionKey, {httpOnly: true})
 
     this.ctx.body = result;
+  }
+
+  async decryptData(){
+    console.log(this.ctx.request.body);
+    this.ctx.validate({
+      encryptedData: { type: 'string' },
+      iv: { type: 'string' },
+      sessionKey: {type: 'string'}
+    });
+    const data = await this.ctx.service.weixin.decryptData({...this.ctx.request.body, appType: 'parentApp'})
+    this.ctx.body = data;
   }
 }
 
