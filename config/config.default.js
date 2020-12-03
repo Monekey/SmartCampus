@@ -29,8 +29,8 @@ module.exports = appInfo => {
       enable: false,
     },
     csrf: {
-      enable: false
-    }
+      enable: false,
+    },
   };
 
   const mysql = {
@@ -63,9 +63,7 @@ module.exports = appInfo => {
       // ...
     },
     // default configuration for all databases
-    default: {
-
-    },
+    default: {},
 
 
     // load into app, default is open
@@ -78,6 +76,6 @@ module.exports = appInfo => {
     ...config,
     ...userConfig,
     mysql,
-    miniApp
+    miniApp,
   };
 };
