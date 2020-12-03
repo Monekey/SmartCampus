@@ -23,6 +23,10 @@ class HomeController extends Controller {
     this.ctx.body = result;
   }
 
+  /*
+   * 解密
+   * @returns {Promise<void>}
+   */
   async decryptData() {
     console.log(this.ctx.request.body);
     this.ctx.validate({
@@ -30,8 +34,29 @@ class HomeController extends Controller {
       iv: { type: 'string' },
       sessionKey: { type: 'string' },
     });
-    const data = await this.ctx.service.weixin.decryptData({ ...this.ctx.request.body, appType: 'parentApp' });
-    this.ctx.body = data;
+    this.ctx.body = await this.ctx.service.weixin.decryptData({ ...this.ctx.request.body, appType: 'parentApp' });
+  }
+
+  async validateStudent() {
+    const { ctx, app } = this;
+    const db = app.mysql.get('ry');
+    ctx.validate({
+      studentName: { type: 'string' },
+      idCard: { type: 'string' },
+    });
+
+    const result = await db.get('base_student_info', {
+      idcard: this.ctx.request.body.idCard,
+      name: this.ctx.request.body.studentName,
+    });
+    if (!result || !result.id) {
+      this.ctx.body = { msg: '未找到绑定的学生信息', error: true };
+      return;
+    }
+    const studentInfo = await db.get('v_form_student_info', {
+      studentid: result.id,
+    });
+    this.ctx.body = studentInfo;
   }
 }
 
