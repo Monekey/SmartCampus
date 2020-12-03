@@ -14,6 +14,18 @@ exports.mysql = {
       // database
       database: 'ry',
     },
+    app: {
+      // host
+      host: '101.201.153.14',
+      // port
+      port: '3306',
+      // username
+      user: 'tongsheng',
+      // password
+      password: 'tongsheng',
+      // database
+      database: 'smartcampus',
+    },
     // ...
   },
   // default configuration for all databases

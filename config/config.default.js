@@ -48,7 +48,7 @@ module.exports = appInfo => {
         // database
         database: 'ry',
       },
-      school: {
+      app: {
         // host
         host: '101.201.153.14',
         // port
@@ -58,7 +58,7 @@ module.exports = appInfo => {
         // password
         password: 'tongsheng',
         // database
-        database: 'ry',
+        database: 'smartcampus',
       },
       // ...
     },
