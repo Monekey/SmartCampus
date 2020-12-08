@@ -5,6 +5,12 @@ function WXBizDataCrypt(appId, sessionKey) {
   this.sessionKey = sessionKey
 }
 
+/**
+ * 解密算法
+ * @param encryptedData 密文
+ * @param iv 初始向量（Initialization Vector: IV）
+ * @returns {any}
+ */
 WXBizDataCrypt.prototype.decryptData = function (encryptedData, iv) {
   // base64 decode
   var sessionKey = new Buffer(this.sessionKey, 'base64')

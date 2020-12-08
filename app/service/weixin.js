@@ -4,6 +4,9 @@ const BaseService = require('./base');
 
 const WXBizDataCrypt = require('../utils/WXBizDataCrypt');
 
+/**
+ * 对接微信api
+ */
 class wxService extends BaseService {
 
   /**
@@ -40,6 +43,14 @@ class wxService extends BaseService {
 
   }
 
+  /**
+   * 解密数据
+   * @param encryptedData
+   * @param iv
+   * @param sessionKey 微信sessionKey
+   * @param appType
+   * @returns {Promise<*>}
+   */
   async decryptData({ encryptedData, iv, sessionKey, appType = 'parentApp' }) {
     const wxApp = this.config.miniApp[appType];
 
