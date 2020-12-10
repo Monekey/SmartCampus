@@ -16,4 +16,7 @@ module.exports = app => {
   router.post('/register', register);
   router.post('/registerTeacher', registerTeacher);
   router.post('/getUserInfo', getUserInfo);
+  const {addLeave, getLeaveListByStudentId} = controller.leave;
+  router.post('/addLeave', addLeave);
+  router.post('/getLeaveListByStudentId', getLeaveListByStudentId);
 };

@@ -30,6 +30,20 @@ class StudentService extends Service {
       studentid: id,
     });
   }
+
+  async getClassIdByStuId(studentId) {
+    const db = this.app.mysql.get('ry');
+    const result = await db.get('base_stutocla_info', {student_id: studentId});
+    if (!result || !result.class_id) {
+      return null;
+    }
+    return result.class_id;
+  }
+
+  async getLeaderByClassId(classId) {
+    const db = this.app.mysql.get('ry');
+    return await db.get('sys_user', {dept_id: classId});
+  }
 }
 
 module.exports = StudentService;

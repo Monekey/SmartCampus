@@ -31,7 +31,7 @@ class TeacherService extends Service {
     const roles = await db.select('sys_user_role', {
       where: { user_id: id, }
     });
-    return roles.map(item => roleMap[item.role_id]?.value);
+    return roles.map(item => roleMap[item.role_id].value);
   }
 }
 
