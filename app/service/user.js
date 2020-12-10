@@ -11,24 +11,23 @@ class UserService extends Service {
   //   return user;
   // }
   async find(loginType, openId) {
-    const {app} = this;
+    const { app } = this;
     const db = app.mysql.get('app');
 
     let userInfo = null;
     switch (loginType) {
       case 'wx':
-        userInfo = await db.get('user', {wxid: openId});
-        if (userInfo) {
-          const relation = await db.get('user_to_student', {user_id: userInfo.id});
-          userInfo.studentInfo = relation;
-        }
+        userInfo = await db.get('user', { wxid: openId });
         break;
       case 'dd':
         break;
       default:
-        return null
+        return null;
     }
-
+    if (userInfo) {
+      const relation = await db.get('user_to_student', { user_id: userInfo.id });
+      userInfo.studentInfo = relation;
+    }
     return userInfo;
   }
 
