@@ -4,10 +4,10 @@
  * @param {Egg.Application} app - egg application
  */
 module.exports = app => {
-  const { router, controller } = app;
-  const { index } = controller.home;
+  const {router, controller} = app;
+  const {index} = controller.home;
   router.get('/', index);
-  const { validateStudent, validateTeacher, decryptData, register, registerTeacher, parentLogin, teacherLogin, getUserInfo } = controller.user;
+  const {validateStudent, validateTeacher, decryptData, register, registerTeacher, parentLogin, teacherLogin, getUserInfo} = controller.user;
   router.get('/parentLogin', parentLogin);
   router.get('/teacherLogin', teacherLogin);
   router.post('/decryptData', decryptData);
@@ -16,10 +16,10 @@ module.exports = app => {
   router.post('/register', register);
   router.post('/registerTeacher', registerTeacher);
   router.post('/getUserInfo', getUserInfo);
-  const { addLeave, getLeaveListByStudentId, getLeaveList, cancelAsk, leaveApproval } = controller.leave;
+  const {addLeave, getLeaveList, cancelAsk, leaveApproval, addCheckoutLeave} = controller.leave;
   router.post('/addLeave', addLeave);
-  router.post('/getLeaveListByStudentId', getLeaveListByStudentId);
   router.post('/getLeaveList', getLeaveList);
   router.post('/cancelAsk', cancelAsk);
   router.post('/leaveApproval', leaveApproval);
+  router.post('/addCheckoutLeave', addCheckoutLeave);
 };

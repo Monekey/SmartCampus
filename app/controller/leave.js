@@ -15,19 +15,18 @@ class LeaveController extends Controller {
    */
   async addLeave() {
     this.ctx.validate({
-      userId: { type: 'number' },
-      studentId: { type: 'string' },
-      studentName: { type: 'string' },
-      startTime: { type: 'string' },
-      endTime: { type: 'string' },
-      reason: { type: 'string' },
-      type: { type: 'string' },
-      time: { type: 'number' },
+      userId: {type: 'number'},
+      studentId: {type: 'string'},
+      studentName: {type: 'string'},
+      startTime: {type: 'string'},
+      endTime: {type: 'string'},
+      // reason: { type: 'string' },
+      type: {type: 'string'},
+      time: {type: 'number'},
     });
     const requestParams = this.ctx.request.body;
 
     const db = this.app.mysql.get('app');
-    const ry = this.app.mysql.get('ry');
     let result;
 
     const flowId = `${this.ctx.helper.FormatDate()}-${this.ctx.helper.S4()}`;
@@ -70,9 +69,12 @@ class LeaveController extends Controller {
             remark: requestParams.reason,
             leaveTimeFrom: new Date(requestParams.startTime),
             leaveTimeTo: new Date(requestParams.endTime),
-            overTimeDays: requestParams.time
+            overTimeDays: requestParams.time,
+            parentName: requestParams.parentName,
+            parentMobile: requestParams.parentMobile,
+            address: requestParams.address,
           });
-          return { success: true };
+          return {success: true};
         }, this.ctx);
         //发送通知
         break;
@@ -100,12 +102,24 @@ class LeaveController extends Controller {
             studentId: requestParams.studentId,
             addTime: conn.literals.now,
             leaveType: 2,
-            remark: requestParams.reason,
+            // remark: requestParams.reason,
             leaveTimeFrom: new Date(requestParams.startTime),
             leaveTimeTo: new Date(requestParams.endTime),
-            overTimeDays: requestParams.time
+            overTimeDays: requestParams.time,
+            parentName: requestParams.parentName,
+            parentMobile: requestParams.parentMobile,
+            temperature: requestParams.temperature,
+            symptom: requestParams.symptom,
+            epidemiologicalHistory: requestParams.epidemiologicalHistory,
+            epidemicAreas: requestParams.epidemicAreas,
+            isContactFever: requestParams.isContactFever,
+            familyHealth: requestParams.familyHealth,
+            otherFamilyHealth: requestParams.otherFamilyHealth,
+            hospital: requestParams.hospital,
+            otherSymptom: requestParams.otherSymptom,
+            diagnosis: requestParams.diagnosis,
           });
-          return { success: true };
+          return {success: true};
         }, this.ctx);
         break;
       default:
@@ -117,27 +131,96 @@ class LeaveController extends Controller {
     this.ctx.body = result;
   }
 
+  /**
+   * 撤回请假
+   * @returns {Promise<void>}
+   */
   async cancelAsk() {
     this.ctx.validate({
-      flowId: { type: 'string' },
+      flowId: {type: 'string'},
     });
     const requestParams = this.ctx.request.body;
     //验证改流程是否可撤回
     //todo 简单处理
     const db = this.app.mysql.get('app');
 
-    const flow = await db.get('audit_flow', { flowId: requestParams.flowId });
+    const flow = await db.get('audit_flow', {flowId: requestParams.flowId});
     if (flow.approStatus !== 1) {
       this.ctx.setError('该流程状态已变更，无法撤回');
       return;
     }
     flow.approStatus = 4;
-    const result = await db.update('audit_flow', flow, { where: { flowId: flow.flowId } });
+    const result = await db.update('audit_flow', flow, {where: {flowId: flow.flowId}});
     // 判断更新成功
     const updateSuccess = result.affectedRows === 1;
     this.ctx.body = {
       success: updateSuccess
     };
+  }
+
+  /**
+   * 发起销假
+   * @returns {Promise<void>}
+   */
+  async addCheckoutLeave() {
+    this.ctx.validate({
+      flowId: {type: 'string'},
+      userId: {type: 'number'}
+    });
+    const requestParams = this.ctx.request.body;
+
+    const db = this.app.mysql.get('app');
+    let result;
+
+    const flowId = `${this.ctx.helper.FormatDate()}-${this.ctx.helper.S4()}`;
+    const correlationFlow = await db.get('leave_ask', {flowId: requestParams.flowId});
+    if (!correlationFlow) {
+      this.ctx.setError('未找到请假流程');
+      return;
+    }
+
+    const classId = await this.ctx.service.student.getClassIdByStuId(correlationFlow.studentId);
+    if (!classId) {
+      this.ctx.setError('该学生没有关联的班级');
+      return;
+    }
+    const leader = await this.ctx.service.student.getLeaderByClassId(classId);
+    if (!leader) {
+      this.ctx.setError('该学生没有的班级没有设置班主任!');
+      return;
+    }
+    const leaderId = leader.user_id;
+    //todo service封装
+    result = await db.beginTransactionScope(async conn => {
+      await conn.insert('audit_flow', {
+        flowId,
+        title: `${requestParams.studentName}的销假申请`,
+        busType: this.BusType,
+        addUserId: requestParams.userId,
+        addTime: conn.literals.now,
+        approStatus: 1
+      });
+      await conn.insert('audit_flow_detail', {
+        flowId,
+        auditUserId: leaderId,
+        auditRemark: null,
+        auditTime: null,
+        auditStatus: 2
+      });
+      await conn.insert('leave_report', {
+        flowId,
+        correlationFlowId: correlationFlow.flowId,
+        addUserId: requestParams.userId,
+        addTime: conn.literals.now,
+        remark: requestParams.remark,
+        approStatus: 1,
+      });
+      return {success: true};
+    }, this.ctx);
+    //发送通知
+
+    console.log('发起销假审批成功');
+    this.ctx.body = result;
   }
 
   /**
@@ -152,14 +235,14 @@ class LeaveController extends Controller {
    */
   async leaveApproval() {
     this.ctx.validate({
-      flowId: { type: 'string' },
-      result: { type: 'number' }, //1同意 2拒绝
-      userId: { type: 'number' }
+      flowId: {type: 'string'},
+      result: {type: 'number'}, //1同意 2拒绝
+      userId: {type: 'number'}
     });
     const requestParams = this.ctx.request.body;
     //验证该流程是否已被审批或被撤回
     const db = this.app.mysql.get('app');
-    const flow = await db.get('audit_flow', { flowId: requestParams.flowId });
+    const flow = await db.get('audit_flow', {flowId: requestParams.flowId});
     if (flow.approStatus !== 1) {
       this.ctx.setError('该流程状态已变更，无法审批');
       return;
@@ -187,33 +270,17 @@ class LeaveController extends Controller {
         ...flow,
         updateTime: conn.literals.now,
         approStatus
-      }, { where: { flowId } });
+      }, {where: {flowId}});
 
       await conn.update('audit_flow_detail', {
         ...flowDetail,
         auditTime: conn.literals.now,
         auditUserId: requestParams.userId,
         auditStatus
-      }, { where: { flowId } });
-      return { success: true };
+      }, {where: {flowId}});
+      return {success: true};
     }, this.ctx);
     this.ctx.body = result;
-  }
-
-  async getLeaveListByStudentId() {
-    this.ctx.validate({
-      studentId: { type: 'string' },
-    });
-    const requestParams = this.ctx.request.body;
-
-    const db = this.app.mysql.get('app');
-
-    const leaveList = await db.select('v_leave_ask', {
-      where: { studentId: requestParams.studentId },
-      orders: [ [ 'addTime', 'desc' ] ]
-    });
-
-    this.ctx.body = leaveList;
   }
 
   async getLeaveList() {
@@ -226,16 +293,23 @@ class LeaveController extends Controller {
     if (requestParams.approStatus) {
       where.approStatus = requestParams.approStatus;
     }
+    if (requestParams.leaveType) {
+      where.leaveType = requestParams.leaveType;
+    }
     if (requestParams.auditUserId) {
       where.auditUserId = requestParams.auditUserId;
     }
     if (requestParams.xiaoyi) {
       where.auditUserId = null;
     }
+    if (requestParams.flowId) {
+      where.flowId = requestParams.flowId;
+    }
+
 
     const leaveList = await db.select('v_leave_ask', {
       where: where,
-      orders: [ [ 'addTime', 'desc' ] ]
+      orders: [['addTime', 'desc']]
     });
 
     this.ctx.body = leaveList;
