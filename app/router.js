@@ -22,4 +22,6 @@ module.exports = app => {
   router.post('/cancelAsk', cancelAsk);
   router.post('/leaveApproval', leaveApproval);
   router.post('/addCheckoutLeave', addCheckoutLeave);
+  const {index: exports} = controller.exports;
+  router.get('/exports', exports);
 };
