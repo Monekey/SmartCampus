@@ -22,6 +22,9 @@ module.exports = app => {
   router.post('/cancelAsk', cancelAsk);
   router.post('/leaveApproval', leaveApproval);
   router.post('/addCheckoutLeave', addCheckoutLeave);
-  const {index: exports} = controller.exports;
+  const {index: exports, importClazzToLesson, exportTeacherRate, importScoreConfirm} = controller.exports;
   router.get('/exports', exports);
+  router.get('/importClazzToLesson', importClazzToLesson);
+  router.get('/exportTeacherRate', exportTeacherRate);
+  router.get('/importScoreConfirm', importScoreConfirm);
 };

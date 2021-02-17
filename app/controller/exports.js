@@ -3,7 +3,41 @@
 const Controller = require('egg').Controller;
 const fs = require('fs')
 const xlsx = require('xlsx')
-const path = require('path')
+const path = require('path');
+
+const gradeMap = {
+  1: '2020级(一年级)',
+  2: '2019级（二年级）',
+  3: '2018级（三年级）',
+  4: '2017级（四年级）',
+  5: '2016级（五年级）',
+  6: '2015级（六年级）',
+  7: '2014级（七年级）',
+  8: '2013级（八年级）',
+  9: '2012级（九年级）',
+}
+
+const classMap = {
+  1: '一班',
+  2: '二班',
+  3: '三班',
+  4: '四班',
+  5: '五班',
+  6: '六班',
+  7: '七班',
+  8: '八班',
+}
+
+const confirmLessonMap = {
+  语文: 'language',
+  数学: 'mathematics',
+  英语: 'english',
+  道法: 'taomethod',
+  历史: 'history',
+  物理: 'physics',
+  生物: 'biology',
+  地理: 'geography',
+}
 
 class ExportsController extends Controller {
 
@@ -334,6 +368,302 @@ class ExportsController extends Controller {
     // });
   }
 
+
+  async importClazzToLesson() {
+    const workSheetsFromFile = xlsx.readFile(path.resolve(this.app.config.baseDir, '班级授课老师汇总.xlsx'), {
+      type: 'file'
+    }); //读取文件目录
+    let json = xlsx.utils.sheet_to_json(workSheetsFromFile.Sheets[workSheetsFromFile.SheetNames[0]]);
+    const db = this.app.mysql.get('ry');
+
+    const results = await db.query(clazz())
+    const classMapList = results.filter(clazz => clazz.ancestors.split(',').length >= 3).map(clazz => ({
+      id: clazz.dept_id,
+      className: clazz.dept_name,
+      grade: clazz.parent_name
+    }));
+
+    const userList = await db.select('sys_user');
+    const userIdMap = {};
+    userList.forEach(item => {
+      userIdMap[item.user_name] = item.user_id;
+    });
+    this.ctx.body = classMapList;
+
+    const classIdMap = {};
+    classMapList.forEach(item => {
+      classIdMap[item.grade + item.className] = item.id;
+    });
+
+    const lessonList = await db.select('sys_dict_data', {
+      where: {dict_type: 'form_lesson'},
+    });
+    const lessonMap = {};
+    lessonList.forEach(item => {
+      lessonMap[item.dict_label] = item.dict_value;
+    })
+
+    let classList = [];
+    const errTeacherNameList = [];
+    json.forEach((row) => {
+      const obj = {
+        className: '',
+        teacherList: []
+      };
+      Object.keys(row).forEach((key, index) => {
+        let item = row[key];
+        if (index < 2) {
+          return
+        }
+        if (index === 2) {
+          item = item.toString();
+          const gradeName = gradeMap[item.split('.')[0]];
+          const clazz = classMap[item.split('.')[1]];
+          obj.className = gradeName + clazz;
+          obj.classId = classIdMap[obj.className];
+          if (!obj.classId) {
+            console.log('error', obj.className)
+          }
+          return;
+        }
+        item = item.trim();
+        if (['无', '外聘', '否', '外聘老师', '代课', '不知道'].includes(item)) {
+          return;
+        }
+        if (!userIdMap[item]) {
+          // console.log('用户id查找失败:', item);
+          errTeacherNameList.push(item);
+          return;
+        }
+        if (!lessonMap[key]) {
+          console.log(key)
+        }
+        obj.teacherList.push({
+          lessonId: lessonMap[key],
+          teacherName: item,
+          teacherId: userIdMap[item]
+        });
+
+      });
+      classList.push(obj);
+    })
+    console.log(Array.from(new Set(errTeacherNameList)));
+    // console.log(classList);
+    for (let i = 0; i < classList.length; i++) {
+      const item = classList[i];
+      const row = {
+        teacher_id: '',
+        class_id: item.classId,
+        lesson_id: ''
+      }
+      for (let j = 0; j < item.teacherList.length; j++) {
+        const teacherObj = item.teacherList[j];
+        row.teacher_id = teacherObj.teacherId;
+        row.lesson_id = teacherObj.lessonId;
+        const count = await db.insert('base_teatocla_info', row);
+        console.log(count);
+      }
+    }
+  }
+
+  async exportTeacherRate() {
+    const db = this.app.mysql.get('ry');
+
+    const rateResultMap = {
+      1: '优秀',
+      2: '良好',
+      3: '一般',
+      4: '差'
+    }
+    // const results = await db.query(clazz())
+    // const classMapList = results.filter(clazz => clazz.ancestors.split(',').length >= 3).map(clazz => ({
+    //   id: clazz.dept_id,
+    //   className: clazz.dept_name,
+    //   grade: clazz.parent_name
+    // }));
+    // const classIdMap = {};
+    // classMapList.forEach(item => {
+    //   classIdMap[item.id] = item.grade + item.className;
+    // });
+    const rateList = await db.query(`SELECT (select user_name from sys_user WHERE user_id = teacher_id) as teacherName, teacher_id, class_id, rateResult, position FROM form_virtotea_rate`);
+
+    const rateMap = {}
+    const rateMapParent = {};
+    const rateMapStudent = {};
+
+    rateList.forEach(item => {
+      rateMap[item.teacherName] = rateMap[item.teacherName] || {
+        优秀: 0,
+        良好: 0,
+        一般: 0,
+        差: 0
+      };
+      rateMapParent[item.teacherName] = rateMapParent[item.teacherName] || {
+        优秀: 0,
+        良好: 0,
+        一般: 0,
+        差: 0
+      };
+      rateMapStudent[item.teacherName] = rateMapStudent[item.teacherName] || {
+        优秀: 0,
+        良好: 0,
+        一般: 0,
+        差: 0
+      };
+      rateMap[item.teacherName][rateResultMap[item.rateResult]]++;
+      if (item.position == '1') { // 家长
+        rateMapParent[item.teacherName][rateResultMap[item.rateResult]]++;
+      } else if (item.position == '2') { //学生
+        rateMapStudent[item.teacherName][rateResultMap[item.rateResult]]++;
+      }
+    });
+
+    this.ctx.body = rateMapParent;
+    const result = [];
+    const resultParent = [];
+    const resultStudent = [];
+    Object.keys(rateMap).forEach(teacherName => {
+      const rateObj = rateMap[teacherName];
+      const all = rateObj.优秀 + rateObj.良好 + rateObj.一般 + rateObj.差;
+
+      const percentObj = {
+        '优秀占比(%)': Math.floor((rateObj.优秀 / all) * 10000) / 100, //+ '%',
+        '良好占比(%)': Math.floor((rateObj.良好 / all) * 10000) / 100, //+ '%',
+        '一般占比(%)': Math.floor((rateObj.一般 / all) * 10000) / 100, //+ '%',
+        '差占比(%)': Math.floor((rateObj.良好 / all) * 10000) / 100, //+ '%',
+      }
+
+      result.push({
+        教师: teacherName,
+        ...rateObj,
+        ...percentObj
+      })
+    })
+    Object.keys(rateMapParent).forEach(teacherName => {
+      const rateObj = rateMapParent[teacherName];
+      const all = rateObj.优秀 + rateObj.良好 + rateObj.一般 + rateObj.差;
+
+      const percentObj = {
+        '优秀占比(%)': Math.floor((rateObj.优秀 / all) * 10000) / 100, //+ '%',
+        '良好占比(%)': Math.floor((rateObj.良好 / all) * 10000) / 100, //+ '%',
+        '一般占比(%)': Math.floor((rateObj.一般 / all) * 10000) / 100, //+ '%',
+        '差占比(%)': Math.floor((rateObj.良好 / all) * 10000) / 100, //+ '%',
+      }
+
+      resultParent.push({
+        教师: teacherName,
+        ...rateObj,
+        ...percentObj
+      })
+    })
+    Object.keys(rateMapStudent).forEach(teacherName => {
+      const rateObj = rateMapStudent[teacherName];
+      const all = rateObj.优秀 + rateObj.良好 + rateObj.一般 + rateObj.差;
+
+      const percentObj = {
+        '优秀占比(%)': Math.floor((rateObj.优秀 / all) * 10000) / 100, //+ '%',
+        '良好占比(%)': Math.floor((rateObj.良好 / all) * 10000) / 100, //+ '%',
+        '一般占比(%)': Math.floor((rateObj.一般 / all) * 10000) / 100, //+ '%',
+        '差占比(%)': Math.floor((rateObj.良好 / all) * 10000) / 100, //+ '%',
+      }
+
+      resultStudent.push({
+        教师: teacherName,
+        ...rateObj,
+        ...percentObj
+      })
+    })
+    const Sheets = {'全部': [], '家长': [], '学生': ''}
+    Sheets['全部'] = xlsx.utils.json_to_sheet(result);
+    Sheets['家长'] = xlsx.utils.json_to_sheet(resultParent);
+    Sheets['学生'] = xlsx.utils.json_to_sheet(resultStudent);
+    const workBook = {
+      SheetNames: Object.keys(Sheets),
+      Sheets: Sheets
+    };
+    const filename = `教师评价汇总.xlsx`;
+    const filePath = path.resolve(this.app.config.baseDir, filename);
+    await xlsx.writeFile(workBook, filePath);
+    console.log('Excel已生成')
+  }
+
+
+  async importScoreConfirm() {
+    const grade7 = xlsx.readFile(path.resolve(this.app.config.baseDir, '成绩确认/八年级期末成绩登统（等级）.xls'), {
+      type: 'file'
+    }); //读取文件目录
+    // const grade8 = xlsx.readFile(path.resolve(this.app.config.baseDir, '成绩确认/八年级期末成绩登统（等级）.xls'), {
+    //   type: 'file'
+    // }); //读取文件目录
+    const db = this.app.mysql.get('ry');
+
+    const results = await db.query(clazz())
+    const classMapList = results.filter(clazz => clazz.ancestors.split(',').length >= 3).map(clazz => ({
+      id: clazz.dept_id,
+      className: clazz.dept_name,
+      grade: clazz.parent_name
+    }));
+    const classIdMap = {};
+    classMapList.forEach(item => {
+      classIdMap[item.grade + item.className] = item.id;
+    });
+
+    const base_stutocla_info = await db.select('base_stutocla_info');
+    const stuToClassIdMap = {};
+    base_stutocla_info.forEach(item => {
+      stuToClassIdMap[item.student_id] = item.class_id;
+    })
+
+    const base_student_info = await db.select('base_student_info');
+
+
+    const result = [];
+    Object.keys(grade7.Sheets).forEach(className => {
+      let json = xlsx.utils.sheet_to_json(grade7.Sheets[className]);
+      const classNameWord = gradeMap[className.split('.')[0]] + classMap[className.split('.')[1]];
+      const classId = classIdMap[classNameWord];
+      console.log(classNameWord, classId);
+      // result[classNameWord] = json;
+      json.forEach(row => {
+        const insertObj = {class_id: classId, student_name: '', student_id: ''}
+        Object.keys(row).forEach(header => {
+          if (header === '序号' || header === '班级') {
+            return
+          }
+          if (header === '姓名') {
+            const studentName = row[header];
+            insertObj.student_name = studentName;
+            const stuList = base_student_info.filter(stu => stu.name === studentName);
+            if (!stuList.length) {
+              console.log('error!!', studentName);
+              return;
+            }
+            if (stuList.length === 1) {
+              insertObj.student_id = stuList[0].idcard;
+            } else {
+              const student = stuList.find(stu => stuToClassIdMap[stu.id] == classId);
+              if (!student) {
+                console.log('error!!同名学生没找到班级', studentName, stuList.map(stu => stuToClassIdMap[stu.id]));
+                return
+              }
+              insertObj.student_id = student.idcard;
+            }
+            return;
+          }
+          if (!confirmLessonMap[header]) {
+            return
+          }
+          insertObj[confirmLessonMap[header]] = row[header];
+        });
+        result.push(insertObj);
+      })
+    })
+    for (let j = 0; j < result.length; j++) {
+      const count = await db.insert('form_parents_confirm', result[j]);
+      console.log(count);
+    }
+    this.ctx.body = result;
+  }
 }
 
 function makeSQL(tableName, studentid, teacherId) {
