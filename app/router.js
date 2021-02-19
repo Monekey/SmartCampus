@@ -27,4 +27,9 @@ module.exports = app => {
   router.get('/importClazzToLesson', importClazzToLesson);
   router.get('/exportTeacherRate', exportTeacherRate);
   router.get('/importScoreConfirm', importScoreConfirm);
+  const {addClassSchedule, getClassScheduleList, deleteClassSchedule, fillClassSchedule} = controller.lesson;
+  router.post('/addClassSchedule', addClassSchedule);
+  router.post('/getClassScheduleList', getClassScheduleList);
+  router.post('/deleteClassSchedule', deleteClassSchedule);
+  router.post('/fillClassSchedule', fillClassSchedule);
 };
