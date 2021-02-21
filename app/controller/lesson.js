@@ -6,6 +6,13 @@ const ScheduleTable = 'form_class_schedule';
 const TermBegin = '2021-02-19';
 const TermEnd = '2021-07-11';
 const OneWeekMillionSecond = 1000 * 60 * 60 * 24 * 7;
+const RateTypeMap = {
+  'classroom': '1',
+  'homework': '2',
+  'morning': '3',
+  'evening': '4',
+  'habit': '5'
+}
 
 /**
  * 课程
@@ -155,6 +162,175 @@ class LessonController extends Controller {
       currTime += OneWeekMillionSecond;
     }
   }
+
+  /**
+   * 获取课堂评价待办列表
+   */
+  async getClassroomRateList() {
+    this.ctx.validate({
+      userId: {type: 'number'},
+      beginDate: {type: 'string'},
+      endDate: {type: 'string'},
+    });
+    const db = this.app.mysql.get('ry');
+    const requestParams = this.ctx.request.body;
+    const result = await db.query(rateListSql(requestParams.beginDate, requestParams.endDate, requestParams.userId));
+    this.ctx.body = result
+  }
+
+  /**
+   * 获取课堂评价待办列表
+   */
+  async getClassroomRateListCurriculum() {
+    this.ctx.validate({
+      userId: {type: 'number'},
+      beginDate: {type: 'string'},
+      endDate: {type: 'string'},
+      type: {type: 'string'},
+    });
+    const db = this.app.mysql.get('ry');
+    const requestParams = this.ctx.request.body;
+    const result = await db.query(rateListSqlCurriculum(requestParams.beginDate, requestParams.endDate, requestParams.userId, requestParams.type));
+    this.ctx.body = result
+  }
+
+  /**
+   * 根据id获取单个排课信息
+   */
+  async getRateStudentList() {
+    const db = this.app.mysql.get('ry');
+    const requestParams = this.ctx.request.body;
+    let classId;
+    if (requestParams.scheduleId) {
+      const schedule = await db.get(ScheduleTable, {id: requestParams.scheduleId});
+      classId = schedule.class_id;
+    } else if (requestParams.curriculumId) {
+      const curriculum = await db.get('form_rate_curriculum', {id: requestParams.curriculumId});
+      classId = curriculum.class_id;
+    }
+    const studentList = await db.query(stuSql(classId));
+    this.ctx.body = studentList;
+  }
+
+  /**
+   * 写入评价
+   */
+  async addClassroomRate() {
+    this.ctx.validate({
+      userId: {type: 'number'},
+      studentList: {type: 'array'},
+      type: {type: 'string'},
+    });
+    const db = this.app.mysql.get('ry');
+    const requestParams = this.ctx.request.body;
+    const insertList = [];
+    if (requestParams.scheduleId) {
+      const schedule = await db.get(ScheduleTable, {id: requestParams.scheduleId});
+      requestParams.studentList.forEach(item => {
+        insertList.push({
+          id: null,
+          class_id: schedule.class_id,
+          createUserId: requestParams.userId,
+          lesson_id: schedule.lesson_id,
+          student_id: item.id,
+          classtimeid: schedule.classtime,
+          classname: schedule.classname,
+          createUserName: null,
+          lessonname: null,
+          studentname: item.name,
+          classtimename: null,
+          classdate: schedule.classdate,
+          rateresult: item.rateresult,
+          ratereason: item.ratereason.join(','),
+          remarks: item.remarks,
+          classCurriculumId: null,
+          schedule_id: requestParams.scheduleId
+        })
+      })
+    } else if (requestParams.curriculumId) {
+      const curriculum = await db.get('form_rate_curriculum', {id: requestParams.curriculumId});
+      requestParams.studentList.forEach(item => {
+        insertList.push({
+          id: null,
+          class_id: curriculum.class_id,
+          createUserId: requestParams.userId,
+          lesson_id: curriculum.lesson_id,
+          student_id: item.id,
+          classtimeid: curriculum.classtimeid,
+          classname: curriculum.classname,
+          createUserName: null,
+          lessonname: null,
+          studentname: item.name,
+          classtimename: null,
+          classdate: curriculum.classdate,
+          rateresult: item.rateresult,
+          ratereason: item.ratereason.join(','),
+          remarks: item.remarks,
+          classCurriculumId: requestParams.curriculumId,
+          // schedule_id: null
+        })
+      })
+    }
+    let count = 0;
+    await db.beginTransactionScope(async conn => {
+      for (let i = 0; i < insertList.length; i++) {
+        const result = await conn.insert(`form_rate_${requestParams.type}`, {
+          ...insertList[i],
+          createdate: conn.literals.now,
+        });
+        count += result.affectedRows;
+      }
+    });
+    this.ctx.body = {
+      error: false,
+      count
+    }
+  }
+
+
+  /**
+   * 添加一个旧评价任务
+   */
+  async addRateCurriculum() {
+    this.ctx.validate({
+      userId: {type: 'number'},
+      userName: {type: 'string'},
+      type: {type: 'string'},
+      classId: {type: 'string'},
+      // classTime: {type: 'string'},
+      // lessonId: {type: 'string'},
+      className: {type: 'string'},
+      // lessonName: {type: 'string'},
+      // classTimeName: {type: 'string'},
+      classDate: {type: 'string'},
+    });
+    const db = this.app.mysql.get('ry');
+    const requestParams = this.ctx.request.body;
+    const rateType = RateTypeMap[requestParams.type];
+    let insertId = '';
+    await db.beginTransactionScope(async conn => {
+      const result = await conn.insert('form_rate_curriculum', {
+        id: null,
+        class_id: requestParams.classId,
+        createUserId: requestParams.userId,
+        classtimeid: requestParams.classTime,
+        lesson_id: requestParams.lessonId,
+        classname: requestParams.className,
+        createUserName: requestParams.userName,
+        lessonname: requestParams.lessonName,
+        classtimename: requestParams.classTimeName,
+        classdate: requestParams.classDate,
+        ratetype: rateType,
+        createdate: conn.literals.now,
+        savetype: '0'
+      });
+      insertId = result.insertId;
+    });
+    this.ctx.body = {
+      error: false,
+      insertId
+    }
+  }
 }
 
 function listSql(beginDate, endDate, userId) {
@@ -165,6 +341,69 @@ FROM
 form_class_schedule a
 where classdate >= '${beginDate}' and classdate <= '${endDate}' and teacher_id = '${userId}'
 `;
+  return sql
+}
+
+function rateListSql(beginDate, endDate, teacherId) {
+  let sql = `
+  SELECT
+  finalresult.* 
+FROM
+  (
+  SELECT
+    result.*,
+    b.id AS rated 
+  FROM
+    ( SELECT a.*, ( SELECT ${'`'}name${'`'} FROM base_lesson_info lesson WHERE CONCAT( 'LE', a.lesson_id ) = lesson.id ) AS lessonName FROM form_class_schedule a WHERE a.teacher_id = '${teacherId}' AND a.classdate >= '${beginDate}' AND a.classdate <= '${endDate}' ) result
+    LEFT JOIN form_rate_classroom b ON result.id = b.schedule_id 
+  ) finalresult 
+GROUP BY
+  finalresult.id 
+ORDER BY
+  finalresult.classdate DESC,
+  finalresult.classtime ASC
+  `;
+  return sql;
+}
+
+function rateListSqlCurriculum(beginDate, endDate, teacherId, type) {
+  let sql = `
+SELECT
+	finalresult.* 
+FROM
+	(
+	SELECT
+		result.*,
+		b.id AS rated 
+	FROM
+		(
+		SELECT
+			a.*,
+			classtimeid AS classtime 
+		FROM
+			form_rate_curriculum a 
+		WHERE
+			a.createUserId = '${teacherId}' 
+			AND a.classdate >= '${beginDate}' 
+			AND a.classdate <= '${endDate}' 
+			AND a.ratetype = '${RateTypeMap[type]}'
+		) result
+		LEFT JOIN form_rate_${type} b ON result.id = b.classCurriculumId 
+	) finalresult 
+GROUP BY
+	finalresult.id 
+ORDER BY
+	finalresult.classdate DESC,
+	finalresult.classtime ASC
+  `;
+  return sql;
+}
+
+function stuSql(classId) {
+  let sql = `
+  SELECT r.* FROM (SELECT * FROM base_stutocla_info a WHERE a.class_id = '${classId}') l
+LEFT JOIN base_student_info r ON l.student_id = r.id 
+ORDER BY r.sex ASC, r.name ASC`;
   return sql
 }
 
