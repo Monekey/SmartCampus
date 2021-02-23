@@ -195,7 +195,7 @@ class LessonController extends Controller {
   }
 
   /**
-   * 根据id获取单个排课信息
+   * 根据排课id获取学生列表
    */
   async getRateStudentList() {
     const db = this.app.mysql.get('ry');
@@ -213,6 +213,32 @@ class LessonController extends Controller {
   }
 
   /**
+   * 根据id获取学生评价列表
+   */
+  async searchRateStudentList() {
+    this.ctx.validate({
+      type: {type: 'string'},
+    });
+    const db = this.app.mysql.get('ry');
+    const requestParams = this.ctx.request.body;
+    if (requestParams.scheduleId) {
+      const rateList = await db.query(searchStudentSql({
+        type: requestParams.type,
+        idName: 'schedule_id',
+        id: requestParams.scheduleId
+      }));
+      this.ctx.body = rateList;
+    } else if (requestParams.curriculumId) {
+      const rateList = await db.query(searchStudentSql({
+        type: requestParams.type,
+        idName: 'classCurriculumId',
+        id: requestParams.curriculumId
+      }));
+      this.ctx.body = rateList;
+    }
+  }
+
+  /**
    * 写入评价
    */
   async addClassroomRate() {
@@ -220,6 +246,7 @@ class LessonController extends Controller {
       userId: {type: 'number'},
       studentList: {type: 'array'},
       type: {type: 'string'},
+      operate: {type: 'string'},
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
@@ -228,11 +255,11 @@ class LessonController extends Controller {
       const schedule = await db.get(ScheduleTable, {id: requestParams.scheduleId});
       requestParams.studentList.forEach(item => {
         insertList.push({
-          id: null,
+          id: requestParams.operate === 'add' ? null : item.id,
           class_id: schedule.class_id,
           createUserId: requestParams.userId,
           lesson_id: schedule.lesson_id,
-          student_id: item.id,
+          student_id: requestParams.operate === 'add' ? item.id : item.student_id,
           classtimeid: schedule.classtime,
           classname: schedule.classname,
           createUserName: null,
@@ -251,11 +278,11 @@ class LessonController extends Controller {
       const curriculum = await db.get('form_rate_curriculum', {id: requestParams.curriculumId});
       requestParams.studentList.forEach(item => {
         insertList.push({
-          id: null,
+          id: requestParams.operate === 'add' ? null : item.id,
           class_id: curriculum.class_id,
           createUserId: requestParams.userId,
           lesson_id: curriculum.lesson_id,
-          student_id: item.id,
+          student_id: requestParams.operate === 'add' ? item.id : item.student_id,
           classtimeid: curriculum.classtimeid,
           classname: curriculum.classname,
           createUserName: null,
@@ -273,13 +300,24 @@ class LessonController extends Controller {
     }
     let count = 0;
     await db.beginTransactionScope(async conn => {
-      for (let i = 0; i < insertList.length; i++) {
-        const result = await conn.insert(`form_rate_${requestParams.type}`, {
-          ...insertList[i],
-          createdate: conn.literals.now,
-        });
-        count += result.affectedRows;
+      if (requestParams.operate === 'add') {
+        for (let i = 0; i < insertList.length; i++) {
+          const result = await conn.insert(`form_rate_${requestParams.type}`, {
+            ...insertList[i],
+            createdate: conn.literals.now,
+          });
+          count += result.affectedRows;
+        }
+      } else {
+        for (let i = 0; i < insertList.length; i++) {
+          const result = await conn.update(`form_rate_${requestParams.type}`, {
+            ...insertList[i],
+            createdate: conn.literals.now,
+          }, {where: {id: insertList[i].id}});
+          count += result.affectedRows;
+        }
       }
+
     });
     this.ctx.body = {
       error: false,
@@ -329,6 +367,33 @@ class LessonController extends Controller {
     this.ctx.body = {
       error: false,
       insertId
+    }
+  }
+
+  /**
+   * 根据排课删除一个班的评价
+   */
+  async deleteClassroomRate() {
+    this.ctx.validate({
+      // userId: {type: 'number'},
+      type: {type: 'string'},
+    });
+    const db = this.app.mysql.get('ry');
+    const requestParams = this.ctx.request.body;
+    if (requestParams.scheduleId) {
+      const result = await db.delete(`form_rate_${requestParams.type}`, {
+        schedule_id: requestParams.scheduleId,
+      });
+      this.ctx.body = {
+        result
+      };
+    } else if (requestParams.curriculumId) {
+      const result = await db.delete(`form_rate_${requestParams.type}`, {
+        classCurriculumId: requestParams.curriculumId,
+      });
+      this.ctx.body = {
+        result
+      };
     }
   }
 }
@@ -405,6 +470,22 @@ function stuSql(classId) {
 LEFT JOIN base_student_info r ON l.student_id = r.id 
 ORDER BY r.sex ASC, r.name ASC`;
   return sql
+}
+
+function searchStudentSql({type, id, idName}) {
+  let sql = `
+  SELECT
+  rateList.*,
+  student.sex,
+  student.NAME 
+FROM
+  ( SELECT rate.* FROM form_rate_${type} rate WHERE rate.${idName} = '${id}' ) rateList
+  LEFT JOIN base_student_info student ON student.id = rateList.student_id 
+ORDER BY
+  student.sex ASC,
+  student.NAME ASC
+  `;
+  return sql;
 }
 
 module.exports = LessonController;

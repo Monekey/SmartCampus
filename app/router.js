@@ -4,10 +4,10 @@
  * @param {Egg.Application} app - egg application
  */
 module.exports = app => {
-  const { router, controller } = app;
-  const { index } = controller.home;
+  const {router, controller} = app;
+  const {index} = controller.home;
   router.get('/', index);
-  const { validateStudent, validateTeacher, decryptData, register, registerTeacher, parentLogin, teacherLogin, getUserInfo } = controller.user;
+  const {validateStudent, validateTeacher, decryptData, register, registerTeacher, parentLogin, teacherLogin, getUserInfo} = controller.user;
   router.get('/parentLogin', parentLogin);
   router.get('/teacherLogin', teacherLogin);
   router.post('/decryptData', decryptData);
@@ -16,18 +16,18 @@ module.exports = app => {
   router.post('/register', register);
   router.post('/registerTeacher', registerTeacher);
   router.post('/getUserInfo', getUserInfo);
-  const { addLeave, getLeaveList, cancelAsk, leaveApproval, addCheckoutLeave } = controller.leave;
+  const {addLeave, getLeaveList, cancelAsk, leaveApproval, addCheckoutLeave} = controller.leave;
   router.post('/addLeave', addLeave);
   router.post('/getLeaveList', getLeaveList);
   router.post('/cancelAsk', cancelAsk);
   router.post('/leaveApproval', leaveApproval);
   router.post('/addCheckoutLeave', addCheckoutLeave);
-  const { index: exports, importClazzToLesson, exportTeacherRate, importScoreConfirm } = controller.exports;
+  const {index: exports, importClazzToLesson, exportTeacherRate, importScoreConfirm} = controller.exports;
   router.get('/exports', exports);
   router.get('/importClazzToLesson', importClazzToLesson);
   router.get('/exportTeacherRate', exportTeacherRate);
   router.get('/importScoreConfirm', importScoreConfirm);
-  const { getClassroomRateListCurriculum, addClassSchedule, getClassScheduleList, deleteClassSchedule, fillClassSchedule, getClassroomRateList, getRateStudentList, addClassroomRate, addRateCurriculum } = controller.lesson;
+  const {deleteClassroomRate, searchRateStudentList, getClassroomRateListCurriculum, addClassSchedule, getClassScheduleList, deleteClassSchedule, fillClassSchedule, getClassroomRateList, getRateStudentList, addClassroomRate, addRateCurriculum} = controller.lesson;
   router.post('/addClassSchedule', addClassSchedule);
   router.post('/getClassScheduleList', getClassScheduleList);
   router.post('/deleteClassSchedule', deleteClassSchedule);
@@ -37,7 +37,9 @@ module.exports = app => {
   router.post('/addClassroomRate', addClassroomRate);
   router.post('/addRateCurriculum', addRateCurriculum);
   router.post('/getClassroomRateListCurriculum', getClassroomRateListCurriculum);
-  const { getStudentList, addStudent } = controller.student;
+  router.post('/searchRateStudentList', searchRateStudentList);
+  router.post('/deleteClassroomRate', deleteClassroomRate);
+  const {getStudentList, addStudent} = controller.student;
   router.post('/getStudentList', getStudentList);
   router.post('/addStudent', addStudent);
 };
