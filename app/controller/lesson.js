@@ -19,6 +19,15 @@ const RateTypeMap = {
  */
 class LessonController extends Controller {
 
+  async testTodo() {
+    const access_token = await this.ctx.service.dingding.getToken();
+    const result = await this.ctx.service.dingding.notify(access_token);
+
+    this.ctx.body = {
+      result: result
+    }
+  }
+
   /**
    * 查询列表
    */
@@ -176,6 +185,17 @@ class LessonController extends Controller {
     const requestParams = this.ctx.request.body;
     const result = await db.query(rateListSql(requestParams.beginDate, requestParams.endDate, requestParams.userId));
     this.ctx.body = result
+  }
+
+  /**
+   * 根据条件返回单个排课
+   */
+  async getClassSchedule() {
+    const db = this.app.mysql.get('ry');
+    const requestParams = this.ctx.request.body;
+    this.ctx.body = {
+      data: await db.get(ScheduleTable, {...requestParams})
+    }
   }
 
   /**
@@ -396,6 +416,30 @@ class LessonController extends Controller {
       };
     }
   }
+
+
+  /**
+   * 根据班级码获取班级
+   */
+  async getDeptFormIdCode() {
+    this.ctx.validate({
+      idCode: {type: 'string'},
+    });
+    const db = this.app.mysql.get('ry');
+    const requestParams = this.ctx.request.body;
+    const result = await db.query(deptSql(requestParams.idCode));
+    if (!result || !result.length) {
+      return this.ctx.setError('无效的班级码');
+    }
+    this.ctx.body = result[0];
+  }
+
+  /**
+   * 添加代课
+   */
+  async substitute() {
+
+  }
 }
 
 function listSql(beginDate, endDate, userId) {
@@ -485,6 +529,39 @@ ORDER BY
   student.sex ASC,
   student.NAME ASC
   `;
+  return sql;
+}
+
+function deptSql(idcode) {
+  let sql = `
+  SELECT
+d.dept_id,
+d.parent_id,
+d.ancestors,
+d.dept_name,
+d.order_num,
+d.leader,
+d.phone,
+d.email,
+d.STATUS,
+d.del_flag,
+d.create_by,
+d.create_time,
+d.grade,(
+SELECT
+dept_name 
+FROM
+sys_dept 
+WHERE
+dept_id = d.parent_id 
+) parent_name,
+idcode,
+concat(( SELECT dept_name FROM sys_dept WHERE dept_id = d.parent_id ), d.dept_name ) fullname 
+FROM
+sys_dept d
+WHERE
+idcode = '${idcode}'
+`
   return sql;
 }
 
