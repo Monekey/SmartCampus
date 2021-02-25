@@ -193,8 +193,30 @@ class LessonController extends Controller {
   async getClassSchedule() {
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
+    const result = await db.get('v_form_class_schedule', {...requestParams});
+    if (result) {
+      const rated = await db.get('form_rate_classroom', {schedule_id: result.id});
+      this.ctx.body = {
+        data: result,
+        rated: !!rated
+      }
+    } else {
+      this.ctx.body = {
+        data: result,
+        rated: false
+      }
+    }
+
+  }
+
+  /**
+   * 获取用户信息
+   */
+  async getLessonUserInfo() {
+    const db = this.app.mysql.get('ry');
+    const requestParams = this.ctx.request.body;
     this.ctx.body = {
-      data: await db.get(ScheduleTable, {...requestParams})
+      data: await db.get('sys_user', {...requestParams})
     }
   }
 
@@ -438,18 +460,64 @@ class LessonController extends Controller {
    * 添加代课
    */
   async substitute() {
+    this.ctx.validate({
+      lessonId: {type: 'string'},
+      userId: {type: 'number'},
+      scheduleId: {type: 'string'},
+    });
+    const db = this.app.mysql.get('ry');
+    const requestParams = this.ctx.request.body;
+    const result = await db.update(ScheduleTable, {
+      substitute_lesson_id: requestParams.lessonId,
+      substitute_teacher_id: requestParams.userId
+    }, {where: {id: requestParams.scheduleId}});
+    if (result.affectedRows === 1) {
+      this.ctx.body = {
+        result,
+        error: false
+      }
+    } else {
+      this.ctx.setError('添加代课失败，该课程可能已修改或删除，请重试')
+    }
 
+  }
+
+  /**
+   * 取消代课
+   */
+  async cancelSubstitute() {
+    this.ctx.validate({
+      userId: {type: 'number'},
+      scheduleId: {type: 'string'},
+    });
+    const db = this.app.mysql.get('ry');
+    const requestParams = this.ctx.request.body;
+    const result = await db.update(ScheduleTable, {
+      substitute_lesson_id: null,
+      substitute_teacher_id: null
+    }, {where: {id: requestParams.scheduleId, substitute_teacher_id: requestParams.userId.toString()}});
+    if (result.affectedRows === 1) {
+      this.ctx.body = {
+        result,
+        error: false
+      }
+    } else {
+      this.ctx.setError('取消代课失败，该代课信息可能已失效，请重试')
+    }
   }
 }
 
 function listSql(beginDate, endDate, userId) {
   let sql = `SELECT
 *,
-( SELECT ${'`'}name${'`'} FROM base_lesson_info lesson WHERE CONCAT( 'LE', a.lesson_id ) = lesson.id ) AS lessonName 
+( SELECT ${'`'}name${'`'} FROM base_lesson_info lesson WHERE CONCAT( 'LE', a.lesson_id ) = lesson.id ) AS lessonName,
+( SELECT ${'`'}name${'`'} FROM base_lesson_info lesson WHERE CONCAT( 'LE', a.substitute_lesson_id ) = lesson.id ) AS substituteLessonName  
 FROM
 form_class_schedule a
-where classdate >= '${beginDate}' and classdate <= '${endDate}' and teacher_id = '${userId}'
+where classdate >= '${beginDate}' and classdate <= '${endDate}' and 
+(teacher_id = '${userId}' or substitute_teacher_id = '${userId}')
 `;
+  console.log(sql)
   return sql
 }
 
@@ -463,7 +531,11 @@ FROM
     result.*,
     b.id AS rated 
   FROM
-    ( SELECT a.*, ( SELECT ${'`'}name${'`'} FROM base_lesson_info lesson WHERE CONCAT( 'LE', a.lesson_id ) = lesson.id ) AS lessonName FROM form_class_schedule a WHERE a.teacher_id = '${teacherId}' AND a.classdate >= '${beginDate}' AND a.classdate <= '${endDate}' ) result
+    ( SELECT a.*, ( SELECT NAME FROM base_lesson_info lesson WHERE CONCAT( 'LE', a.lesson_id ) = lesson.id ) AS lessonName,
+     ( SELECT NAME FROM base_lesson_info lesson WHERE CONCAT( 'LE', a.substitute_lesson_id ) = lesson.id ) AS substituteLessonName  
+    FROM form_class_schedule a WHERE 
+    (a.teacher_id = '${teacherId}' or a.substitute_teacher_id = '${teacherId}') 
+    AND a.classdate >= '${beginDate}' AND a.classdate <= '${endDate}' ) result
     LEFT JOIN form_rate_classroom b ON result.id = b.schedule_id 
   ) finalresult 
 GROUP BY
