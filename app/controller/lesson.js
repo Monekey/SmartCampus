@@ -92,7 +92,8 @@ class LessonController extends Controller {
           insertId = result.insertId;
         })
       } catch (e) {
-        return this.ctx.setError(JSON.stringify(e))
+        this.logger.error(JSON.stringify(e));
+        return this.ctx.setError('参数错误')
       }
 
       this.ctx.body = {error: false, id: insertId}
@@ -388,24 +389,29 @@ class LessonController extends Controller {
     const requestParams = this.ctx.request.body;
     const rateType = RateTypeMap[requestParams.type];
     let insertId = '';
-    await db.beginTransactionScope(async conn => {
-      const result = await conn.insert('form_rate_curriculum', {
-        id: null,
-        class_id: requestParams.classId,
-        createUserId: requestParams.userId,
-        classtimeid: requestParams.classTime,
-        lesson_id: requestParams.lessonId,
-        classname: requestParams.className,
-        createUserName: requestParams.userName,
-        lessonname: requestParams.lessonName,
-        classtimename: requestParams.classTimeName,
-        classdate: requestParams.classDate,
-        ratetype: rateType,
-        createdate: conn.literals.now,
-        savetype: '0'
+    try {
+      await db.beginTransactionScope(async conn => {
+        const result = await conn.insert('form_rate_curriculum', {
+          id: null,
+          class_id: requestParams.classId,
+          createUserId: requestParams.userId,
+          classtimeid: requestParams.classTime,
+          lesson_id: requestParams.lessonId,
+          classname: requestParams.className,
+          createUserName: requestParams.userName,
+          lessonname: requestParams.lessonName,
+          classtimename: requestParams.classTimeName,
+          classdate: requestParams.classDate,
+          ratetype: rateType,
+          createdate: conn.literals.now,
+          savetype: '0'
+        });
+        insertId = result.insertId;
       });
-      insertId = result.insertId;
-    });
+    } catch (e) {
+      this.logger.error(JSON.stringify(e));
+      return this.ctx.setError('参数错误')
+    }
     this.ctx.body = {
       error: false,
       insertId

@@ -74,12 +74,12 @@ class ddService extends BaseService {
       dataType: 'json',
       data: {
         agent_id: ddApp.AgentId,
-        userid_list: '090236686223600734,022633566625201448',
+        userid_list: '090236686223600734,022633566625201448,manager1741',
         msg: JSON.stringify({
           "msgtype": "action_card",
           "action_card": {
             "title": "截止今天您有3个待评价的课程",
-            "markdown": "### 截止今天您有3个待评价的课程  \n  - 三年二班 第六节 语文  \n  - 三年二班 第二节 数学  \n  - 三年二班 第三节 英语",
+            "markdown": "### 您有3个待评价任务即将过期  \n  - 三年三班 第六节 语文  \n  - 三年二班 第二节 数学  \n  - 三年二班 第三节 英语",
             "btn_orientation": "0",
             "btn_json_list": [
               {
