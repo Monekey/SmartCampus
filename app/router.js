@@ -44,7 +44,9 @@ module.exports = app => {
   router.post('/getDeptFormIdCode', getDeptFormIdCode);
   router.post('/substitute', substitute);
   router.post('/cancelSubstitute', cancelSubstitute);
-  const {getStudentList, addStudent} = controller.student;
+  const {getStudentList, addStudent, saveStudentList, disableStudent} = controller.student;
   router.post('/getStudentList', getStudentList);
   router.post('/addStudent', addStudent);
+  router.post('/saveStudentList', saveStudentList);
+  router.post('/disableStudent', disableStudent);
 };

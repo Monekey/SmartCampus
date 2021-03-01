@@ -13,7 +13,7 @@ class StudentController extends Controller {
   async getStudentList() {
     this.ctx.validate({
       // userId: { type: 'number' },
-      classId: { type: 'string' },
+      classId: {type: 'string'},
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
@@ -26,12 +26,13 @@ class StudentController extends Controller {
    */
   async addStudent() {
     this.ctx.validate({
-      userId: { type: 'number' },
-      classId: { type: 'string' },
-      name: { type: 'string' },
-      sex: { type: 'string' },
-      idcard: { type: 'string' },
-      urgentphone: { type: 'string' },
+      userId: {type: 'number'},
+      classId: {type: 'string'},
+      name: {type: 'string'},
+      scode: {type: 'string'},
+      sex: {type: 'string'},
+      idcard: {type: 'string'},
+      urgentphone: {type: 'string'},
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
@@ -43,7 +44,7 @@ class StudentController extends Controller {
           name: requestParams.name,
           sex: requestParams.sex,
           idcard: requestParams.idcard,
-          scode: null,
+          scode: requestParams.scode,
           BIRTHDAY: null,
           STATUS: '0',
           loginCard: null,
@@ -57,10 +58,64 @@ class StudentController extends Controller {
         });
       });
     } catch (e) {
-      return this.ctx.setError(JSON.stringify(e));
+      this.logger.error(JSON.stringify(e));
+      return this.ctx.setError('保存失败，请联系管理员');
     }
     this.ctx.body = {
       error: false
+    };
+  }
+
+  /**
+   * 禁用学生
+   * @returns {Promise<void>}
+   */
+  async disableStudent() {
+    this.ctx.validate({
+      userId: {type: 'number'},
+      studentId: {type: 'string'}
+    });
+    const db = this.app.mysql.get('ry');
+    const requestParams = this.ctx.request.body;
+
+    let rows = 0;
+
+    this.ctx.body = {
+      error: false,
+      rows
+    };
+  }
+
+  /**
+   * 保存学生列表(序号)
+   * @returns {Promise<void>}
+   */
+  async saveStudentList() {
+    this.ctx.validate({
+      userId: {type: 'number'},
+      studentList: {type: 'array'}
+    });
+    const db = this.app.mysql.get('ry');
+    const requestParams = this.ctx.request.body;
+
+    let rows = 0;
+    try {
+      await db.beginTransactionScope(async conn => {
+        for (let i = 0; i < requestParams.studentList.length; i++) {
+          const student = requestParams.studentList[i];
+          const result = await conn.update('base_student_info', {
+            scode: student.scode,
+          }, {where: {id: student.id}});
+          rows += result.affectedRows;
+        }
+      });
+    } catch (e) {
+      this.logger.error(JSON.stringify(e));
+      return this.ctx.setError('保存失败，请联系管理员');
+    }
+    this.ctx.body = {
+      error: false,
+      rows
     };
   }
 }
@@ -69,6 +124,7 @@ function studentByClassId(classId) {
   return `
   SELECT student.* from base_student_info student LEFT JOIN base_stutocla_info b ON student.id = b.student_id
 WHERE 1=1 AND b.class_id = '${classId}'
+order by student.scode+0
 `;
 }
 
