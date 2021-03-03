@@ -589,7 +589,7 @@ ORDER BY
 function stuSql(classId) {
   let sql = `
   SELECT r.* FROM (SELECT * FROM base_stutocla_info a WHERE a.class_id = '${classId}') l
-LEFT JOIN base_student_info r ON l.student_id = r.id 
+INNER JOIN base_student_info r ON l.student_id = r.id AND r.\`STATUS\` = 0
 ORDER BY r.scode+0`;
   return sql
 }
@@ -603,7 +603,7 @@ function searchStudentSql({type, id, idName}) {
   student.scode
 FROM
   ( SELECT rate.* FROM form_rate_${type} rate WHERE rate.${idName} = '${id}' ) rateList
-  LEFT JOIN base_student_info student ON student.id = rateList.student_id 
+  INNER JOIN base_student_info student ON student.id = rateList.student_id AND student.\`STATUS\` = 0
 ORDER BY
   student.scode+0
   `;

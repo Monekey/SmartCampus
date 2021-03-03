@@ -67,18 +67,27 @@ class StudentController extends Controller {
   }
 
   /**
-   * 禁用学生
+   * 禁用/启用学生
    * @returns {Promise<void>}
    */
   async disableStudent() {
     this.ctx.validate({
       userId: {type: 'number'},
-      studentId: {type: 'string'}
+      studentId: {type: 'string'},
+      disable: {type: 'boolean'}
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
-
     let rows = 0;
+    try {
+      const result = await db.update('base_student_info', {
+        STATUS: requestParams.disable ? 1 : 0,
+      }, {where: {id: requestParams.studentId}});
+      rows += result.affectedRows;
+    } catch (e) {
+      this.logger.error(JSON.stringify(e));
+      this.ctx.setError('操作失败，请联系管理员')
+    }
 
     this.ctx.body = {
       error: false,
@@ -124,7 +133,7 @@ function studentByClassId(classId) {
   return `
   SELECT student.* from base_student_info student LEFT JOIN base_stutocla_info b ON student.id = b.student_id
 WHERE 1=1 AND b.class_id = '${classId}'
-order by student.scode+0
+order by student.\`STATUS\`,student.scode+0
 `;
 }
 
