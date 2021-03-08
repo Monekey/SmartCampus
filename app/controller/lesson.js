@@ -511,6 +511,36 @@ class LessonController extends Controller {
       this.ctx.setError('取消代课失败，该代课信息可能已失效，请重试')
     }
   }
+
+  /**
+   * 根据学生查询评价选项详情
+   * @returns {Promise<void>}
+   */
+  async searchRateDetail() {
+    this.ctx.validate({
+      studentId: {type: 'string'},
+      beginDate: {type: 'string'},
+      endDate: {type: 'string'},
+      rateType: {type: 'string'},
+      evType: {type: 'string'},
+    });
+    const db = this.app.mysql.get('ry');
+    const requestParams = this.ctx.request.body;
+
+    let result = [];
+    if(requestParams.evType !== 'learn'){
+      result = await db.query(searchStudentRateSql(requestParams.studentId, requestParams.beginDate, requestParams.endDate, requestParams.rateType, requestParams.evType))
+    }else{
+      const list1 = await db.query(searchStudentRateSql(requestParams.studentId, requestParams.beginDate, requestParams.endDate, requestParams.rateType, 'evening'))
+      const list2 = await db.query(searchStudentRateSql(requestParams.studentId, requestParams.beginDate, requestParams.endDate, requestParams.rateType, 'morning'))
+      result = [...list1, ...list2]
+    }
+
+    this.ctx.body = {
+      error: false,
+      result: result
+    }
+  }
 }
 
 function listSql(beginDate, endDate, userId) {
@@ -641,6 +671,20 @@ WHERE
 idcode = '${idcode}'
 `
   return sql;
+}
+
+function searchStudentRateSql(studentId, beginDate, endDate, rateResult, evType){
+  return `
+  SELECT
+  *
+FROM
+  form_rate_${evType}
+WHERE
+student_id = "${studentId}"
+AND classdate >= "${beginDate}"
+AND classdate <= "${endDate}"
+AND rateresult = '${rateResult}'
+`
 }
 
 module.exports = LessonController;

@@ -27,7 +27,7 @@ module.exports = app => {
   router.get('/importClazzToLesson', importClazzToLesson);
   router.get('/exportTeacherRate', exportTeacherRate);
   router.get('/importScoreConfirm', importScoreConfirm);
-  const {cancelSubstitute, substitute, testTodo, getClassSchedule, getDeptFormIdCode, deleteClassroomRate, searchRateStudentList, getClassroomRateListCurriculum, addClassSchedule, getClassScheduleList, deleteClassSchedule, fillClassSchedule, getClassroomRateList, getRateStudentList, addClassroomRate, addRateCurriculum} = controller.lesson;
+  const {searchRateDetail, cancelSubstitute, substitute, testTodo, getClassSchedule, getDeptFormIdCode, deleteClassroomRate, searchRateStudentList, getClassroomRateListCurriculum, addClassSchedule, getClassScheduleList, deleteClassSchedule, fillClassSchedule, getClassroomRateList, getRateStudentList, addClassroomRate, addRateCurriculum} = controller.lesson;
   router.get('/testTodo', testTodo);
   router.post('/addClassSchedule', addClassSchedule);
   router.post('/getClassSchedule', getClassSchedule);
@@ -44,6 +44,7 @@ module.exports = app => {
   router.post('/getDeptFormIdCode', getDeptFormIdCode);
   router.post('/substitute', substitute);
   router.post('/cancelSubstitute', cancelSubstitute);
+  router.post('/searchRateDetail', searchRateDetail);
   const {getStudentList, addStudent, saveStudentList, disableStudent} = controller.student;
   router.post('/getStudentList', getStudentList);
   router.post('/addStudent', addStudent);
