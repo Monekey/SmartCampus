@@ -2,6 +2,17 @@
 
 const BaseService = require('./base');
 
+const classTimeMap = {
+  1: '第一节',
+  2: '第二节',
+  3: '第三节',
+  4: '第四节',
+  5: '第五节',
+  6: '第六节',
+  7: '第七节',
+  8: '第八节',
+};
+
 /**
  * 对接钉钉api
  */
@@ -13,7 +24,7 @@ class ddService extends BaseService {
    不能频繁调用gettoken接口，否则会受到频率拦截。
    */
   async getToken(appName = 'cloudLink') {
-    const {ctx} = this;
+    const { ctx } = this;
 
     const ddApp = this.config.miniApp[appName];
 
@@ -31,8 +42,8 @@ class ddService extends BaseService {
    * 发起待办
    */
   async addTodo(access_token) {
-    console.log(access_token)
-    const {ctx} = this;
+    console.log(access_token);
+    const { ctx } = this;
     const url = `https://oapi.dingtalk.com/topapi/workrecord/add?access_token=${access_token}`;
 
     const res = await ctx.curl(url, {
@@ -63,38 +74,107 @@ class ddService extends BaseService {
   /**
    * 发送工作通知
    */
-  async notify(access_token, appName = 'cloudLink') {
-    console.log(access_token)
-    const {ctx} = this;
+  async notify(access_token, date) {
+    if (!date) {
+      //昨天的时间
+      const today = new Date();
+      today.setTime(today.getTime() - 24 * 60 * 60 * 1000);
+      date = this.ctx.helper.FormatDate('yyyy-MM-dd', today);
+    }
+    const { ctx } = this;
     const url = `https://oapi.dingtalk.com/topapi/message/corpconversation/asyncsend_v2?access_token=${access_token}`;
-    const ddApp = this.config.miniApp[appName];
+    const ddApp = this.config.miniApp['cloudLink'];
+    const db = this.app.mysql.get('ry');
 
-    const res = await ctx.curl(url, {
-      method: 'POST',
-      dataType: 'json',
-      data: {
-        agent_id: ddApp.AgentId,
-        userid_list: '090236686223600734,022633566625201448,manager1741',
-        msg: JSON.stringify({
-          "msgtype": "action_card",
-          "action_card": {
-            "title": "截止今天您有3个待评价的课程",
-            "markdown": "### 您有3个待评价任务即将过期  \n  - 三年三班 第六节 语文  \n  - 三年二班 第二节 数学  \n  - 三年二班 第三节 英语",
-            "btn_orientation": "0",
-            "btn_json_list": [
-              {
-                "title": "去评价",
-                "action_url": "eapp://pages/yunlian/common?type=classroom"
-              },
-            ],
-            // "single_title": "去评价",
-            // "single_url": "eapp://pages/yunlian/common?type=classroom"
-          }
-        }),
-      }
+    const allUser = await db.select('sys_user');
+    const userDDIdMap = {};
+    allUser.forEach(item => {
+      userDDIdMap[item.user_id] = item.otherloginname;
     });
-    return res;
+
+    const result = await db.query(rateListSql(date));
+    const notRateList = result.filter(item => !item.rated);
+    const teacherMap = {};
+    notRateList.forEach(item => {
+      const teacherId = item.substitute_teacher_id || item.teacher_id;
+      const lessonName = item.substituteLessonName || item.lessonName;
+      const ddId = userDDIdMap[teacherId];
+      teacherMap[ddId] = teacherMap[ddId] || {
+        teacherId,
+        todoList: []
+      };
+      teacherMap[ddId].todoList.push({
+        lessonName: lessonName,
+        // classDate: this.ctx.helper.FormatDate('yyyy-MM-dd', item.classdate),
+        className: item.classname,
+        classTimeName: classTimeMap[item.classtime]
+      });
+    });
+    const br = '  \n  ';
+    for (const ddId of Object.keys(teacherMap)) {
+      const item = teacherMap[ddId];
+      let markdown = `### 您有${item.todoList.length}个待评价任务即将过期${br}`;
+      item.todoList.forEach(todo => {
+        markdown += `- ${todo.className} ${todo.classTimeName} ${todo.lessonName}${br}`;
+      });
+      const result = await ctx.curl(url, {
+        method: 'POST',
+        dataType: 'json',
+        data: {
+          agent_id: ddApp.AgentId,
+          userid_list: ddId,
+          msg: JSON.stringify({
+            'msgtype': 'action_card',
+            'action_card': {
+              'title': '截止今天您有3个待评价的课程',
+              'markdown': markdown,
+              'btn_orientation': '0',
+              'btn_json_list': [
+                {
+                  'title': '去评价',
+                  'action_url': 'eapp://pages/yunlian/common?type=classroom'
+                },
+              ],
+              // "single_title": "去评价",
+              // "single_url": "eapp://pages/yunlian/common?type=classroom"
+            }
+          }),
+        }
+      });
+      console.log(result);
+      if (result.data.errcode === 0) {
+        // this.logger.info('定时任务：课堂评价钉钉工作通知，执行完毕', result);
+      } else {
+        console.log('定时任务：课堂评价钉钉工作通知，执行失败', result, item.teacherId);
+        this.logger.error('定时任务：课堂评价钉钉工作通知，执行失败', result, item.teacherId);
+      }
+    }
+    return teacherMap;
   }
+}
+
+function rateListSql(date) {
+  let sql = `
+  SELECT
+  finalresult.* 
+FROM
+  (
+  SELECT
+    result.*,
+    b.id AS rated 
+  FROM
+    ( SELECT a.*, ( SELECT NAME FROM base_lesson_info lesson WHERE CONCAT( 'LE', a.lesson_id ) = lesson.id ) AS lessonName,
+     ( SELECT NAME FROM base_lesson_info lesson WHERE CONCAT( 'LE', a.substitute_lesson_id ) = lesson.id ) AS substituteLessonName  
+    FROM form_class_schedule a WHERE  a.classdate = '${date}' ) result
+    LEFT JOIN form_rate_classroom b ON result.id = b.schedule_id 
+  ) finalresult 
+GROUP BY
+  finalresult.id 
+ORDER BY
+  finalresult.classdate DESC,
+  finalresult.classtime ASC
+  `;
+  return sql;
 }
 
 module.exports = ddService;
