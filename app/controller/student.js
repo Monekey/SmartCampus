@@ -13,11 +13,11 @@ class StudentController extends Controller {
   async getStudentList() {
     this.ctx.validate({
       // userId: { type: 'number' },
-      classId: {type: 'string'},
+      classId: { type: 'string' },
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
-    this.ctx.body = await db.query(studentByClassId(requestParams.classId));
+    this.ctx.body = await db.query(studentByClassId(requestParams.classId, requestParams.status));
   }
 
   /**
@@ -26,13 +26,13 @@ class StudentController extends Controller {
    */
   async addStudent() {
     this.ctx.validate({
-      userId: {type: 'number'},
-      classId: {type: 'string'},
-      name: {type: 'string'},
-      scode: {type: 'string'},
-      sex: {type: 'string'},
-      idcard: {type: 'string'},
-      urgentphone: {type: 'string'},
+      userId: { type: 'number' },
+      classId: { type: 'string' },
+      name: { type: 'string' },
+      scode: { type: 'string' },
+      sex: { type: 'string' },
+      idcard: { type: 'string' },
+      urgentphone: { type: 'string' },
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
@@ -72,9 +72,9 @@ class StudentController extends Controller {
    */
   async disableStudent() {
     this.ctx.validate({
-      userId: {type: 'number'},
-      studentId: {type: 'string'},
-      disable: {type: 'boolean'}
+      userId: { type: 'number' },
+      studentId: { type: 'string' },
+      disable: { type: 'boolean' }
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
@@ -82,11 +82,11 @@ class StudentController extends Controller {
     try {
       const result = await db.update('base_student_info', {
         STATUS: requestParams.disable ? 1 : 0,
-      }, {where: {id: requestParams.studentId}});
+      }, { where: { id: requestParams.studentId } });
       rows += result.affectedRows;
     } catch (e) {
       this.logger.error(JSON.stringify(e));
-      this.ctx.setError('操作失败，请联系管理员')
+      this.ctx.setError('操作失败，请联系管理员');
     }
 
     this.ctx.body = {
@@ -101,8 +101,8 @@ class StudentController extends Controller {
    */
   async saveStudentList() {
     this.ctx.validate({
-      userId: {type: 'number'},
-      studentList: {type: 'array'}
+      userId: { type: 'number' },
+      studentList: { type: 'array' }
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
@@ -114,7 +114,7 @@ class StudentController extends Controller {
           const student = requestParams.studentList[i];
           const result = await conn.update('base_student_info', {
             scode: student.scode,
-          }, {where: {id: student.id}});
+          }, { where: { id: student.id } });
           rows += result.affectedRows;
         }
       });
@@ -129,10 +129,14 @@ class StudentController extends Controller {
   }
 }
 
-function studentByClassId(classId) {
+function studentByClassId(classId, status) {
+  let extendSql = '';
+  if (status) {
+    extendSql += `AND student.\`STATUS\` = '${status}'`;
+  }
   return `
   SELECT student.* from base_student_info student LEFT JOIN base_stutocla_info b ON student.id = b.student_id
-WHERE 1=1 AND b.class_id = '${classId}'
+WHERE 1=1 AND b.class_id = '${classId}' ${extendSql}
 order by student.\`STATUS\`,student.scode+0
 `;
 }
