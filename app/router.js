@@ -95,5 +95,7 @@ module.exports = app => {
   router.post('/getSportTaskList', getSportTaskList);
   router.post('/getSportScoreByTaskId', getSportScoreByTaskId);
   router.post('/deleteSportTaskAndScore', deleteSportTaskAndScore);
-
+  const {getScoreStatist, getClassStudentStat} = controller.statistic;
+  router.post('/getScoreStatist', getScoreStatist);
+  router.post('/getClassStudentStat', getClassStudentStat);
 };
