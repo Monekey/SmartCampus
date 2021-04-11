@@ -1,8 +1,8 @@
 'use strict';
 
 const Controller = require('egg').Controller;
-const fs = require('fs')
-const xlsx = require('xlsx')
+const fs = require('fs');
+const xlsx = require('xlsx');
 const path = require('path');
 
 const gradeMap = {
@@ -15,7 +15,7 @@ const gradeMap = {
   7: '2014级（七年级）',
   8: '2013级（八年级）',
   9: '2012级（九年级）',
-}
+};
 
 const classMap = {
   1: '一班',
@@ -26,7 +26,7 @@ const classMap = {
   6: '六班',
   7: '七班',
   8: '八班',
-}
+};
 
 const confirmLessonMap = {
   语文: 'language',
@@ -37,27 +37,28 @@ const confirmLessonMap = {
   物理: 'physics',
   生物: 'biology',
   地理: 'geography',
-}
+};
 
 class ExportsController extends Controller {
 
   async index() {
     const db = this.app.mysql.get('ry');
 
-    const results = await db.query(clazz())
+    const results = await db.query(clazz());
 
-    const classList = results.filter(clazz => clazz.ancestors.split(',').length >= 3).map(clazz => ({
-      id: clazz.dept_id,
-      grade: clazz.dept_name,
-      className: clazz.parent_name
-    }));
+    const classList = results.filter(clazz => clazz.ancestors.split(',').length >= 3)
+      .map(clazz => ({
+        id: clazz.dept_id,
+        grade: clazz.dept_name,
+        className: clazz.parent_name
+      }));
 
     // const classList = await db.query(`SELECT * FROM v_form_student_info a WHERE a.classname LIKE '%${'八年级'}%' GROUP BY classname`)
-    console.log(classList)
-    this.ctx.body = {ok: true}
+    console.log(classList);
+    this.ctx.body = { ok: true };
     const list = classList.filter(clazz => {
-      return clazz.className === '2013级（八年级）' && clazz.grade === '一班'
-    })
+      return clazz.className === '2013级（八年级）' && clazz.grade === '一班';
+    });
     // const className = "2013级（八年级）一班";
     // const list = ["2013级（八年级）二班", "2013级（八年级）三班", "2013级（八年级）四班", "2013级（八年级）五班", "2013级（八年级）六班",
     //   "2014级（七年级）一班", "2014级（七年级）二班", "2014级（七年级）三班", "2014级（七年级）四班", "2014级（七年级）五班", "2014级（七年级）六班"];
@@ -74,17 +75,17 @@ class ExportsController extends Controller {
     console.log('当前班级:', className);
     const startDate = '2020-09-20';
     const db = this.app.mysql.get('ry');
-    const studentList = await db.query(`SELECT * FROM v_form_student_info a WHERE a.classname LIKE '%${className}%' GROUP BY studentname`)
+    const studentList = await db.query(`SELECT * FROM v_form_student_info a WHERE a.classname LIKE '%${className}%' GROUP BY studentname`);
     console.log(studentList);
-    const classroomTeacherIds = await db.query(`SELECT DISTINCT	a.createUserId FROM	form_rate_classroom a WHERE	a.classname = '${className}'`)
-    const homeworkTeacherIds = await db.query(`SELECT DISTINCT	a.createUserId FROM	form_rate_homework a WHERE	a.classname = '${className}'`)
-    const eveningTeacherIds = await db.query(`SELECT DISTINCT	a.createUserId FROM	form_rate_evening a WHERE	a.classname = '${className}'`)
-    const morningTeacherIds = await db.query(`SELECT DISTINCT	a.createUserId FROM	form_rate_morning a WHERE	a.classname = '${className}'`)
+    const classroomTeacherIds = await db.query(`SELECT DISTINCT	a.createUserId FROM	form_rate_classroom a WHERE	a.classname = '${className}'`);
+    const homeworkTeacherIds = await db.query(`SELECT DISTINCT	a.createUserId FROM	form_rate_homework a WHERE	a.classname = '${className}'`);
+    const eveningTeacherIds = await db.query(`SELECT DISTINCT	a.createUserId FROM	form_rate_evening a WHERE	a.classname = '${className}'`);
+    const morningTeacherIds = await db.query(`SELECT DISTINCT	a.createUserId FROM	form_rate_morning a WHERE	a.classname = '${className}'`);
     // const habitTeacherIds = await db.query(`SELECT DISTINCT	a.teacher_id FROM	form_habit_info a WHERE	a.classname = '${className}'`)
 
-    let teacherIds = [...classroomTeacherIds.map(item => item.createUserId), ...homeworkTeacherIds.map(item => item.createUserId), ...eveningTeacherIds.map(item => item.createUserId), ...morningTeacherIds.map(item => item.createUserId)]
+    let teacherIds = [ ...classroomTeacherIds.map(item => item.createUserId), ...homeworkTeacherIds.map(item => item.createUserId), ...eveningTeacherIds.map(item => item.createUserId), ...morningTeacherIds.map(item => item.createUserId) ];
     teacherIds = Array.from(new Set(teacherIds));
-    const Sheets = {'综合': []};
+    const Sheets = { '综合': [] };
 
     const teacherList = [];
     for (let i = 0; i < teacherIds.length; i++) {
@@ -193,13 +194,14 @@ class ExportsController extends Controller {
     }
     // console.log(all);
     // all.sort((a, b) => b.score - a.score);
-    console.log('sql查询完毕，正在生成Excel')
-    const data = [{'测试1': 'hello', age: 1}, {name: 'world', age: 2}]
+    console.log('sql查询完毕，正在生成Excel');
+    const data = [ { '测试1': 'hello', age: 1 }, { name: 'world', age: 2 } ];
     const jsonWorkSheet = xlsx.utils.json_to_sheet(data);
-    Object.keys(Sheets).forEach(key => {
-      Sheets[key].sort((a, b) => b.综合得分 - a.综合得分);
-      Sheets[key] = xlsx.utils.json_to_sheet(Sheets[key]);
-    })
+    Object.keys(Sheets)
+      .forEach(key => {
+        Sheets[key].sort((a, b) => b.综合得分 - a.综合得分);
+        Sheets[key] = xlsx.utils.json_to_sheet(Sheets[key]);
+      });
     Sheets['综合'] = xlsx.utils.json_to_sheet(all);
     const workBook = {
       SheetNames: Object.keys(Sheets),
@@ -208,7 +210,7 @@ class ExportsController extends Controller {
     const filename = `${className}.xlsx`;
     const filePath = path.resolve(this.app.config.baseDir, filename);
     await xlsx.writeFile(workBook, filePath);
-    console.log('Excel已生成')
+    console.log('Excel已生成');
     // this.ctx.attachment(filename);
     // this.ctx.body = fs.createReadStream(filePath);
     // fs.unlink(filePath, err => {
@@ -225,17 +227,17 @@ class ExportsController extends Controller {
     const db = this.app.mysql.get('ry');
     // const studentList = await db.query(`SELECT student_id as studentid, studentname FROM form_classroom_rate WHERE class_id = '${classId}' GROUP BY studentname`)
     // console.log(studentList);
-    const studentList = await db.query(`SELECT * FROM v_form_student_info a WHERE a.classname LIKE '%${className}%' GROUP BY studentname`)
+    const studentList = await db.query(`SELECT * FROM v_form_student_info a WHERE a.classname LIKE '%${className}%' GROUP BY studentname`);
 
-    const classroomTeacherIds = await db.query(`SELECT DISTINCT	a.createUserId FROM	form_rate_classroom a WHERE	a.class_id = '${classId}'`)
-    const homeworkTeacherIds = await db.query(`SELECT DISTINCT	a.createUserId FROM	form_rate_homework a WHERE	a.class_id = '${classId}'`)
-    const eveningTeacherIds = await db.query(`SELECT DISTINCT	a.createUserId FROM	form_rate_evening a WHERE	a.class_id = '${classId}'`)
-    const morningTeacherIds = await db.query(`SELECT DISTINCT	a.createUserId FROM	form_rate_morning a WHERE	a.class_id = '${classId}'`)
+    const classroomTeacherIds = await db.query(`SELECT DISTINCT	a.createUserId FROM	form_rate_classroom a WHERE	a.class_id = '${classId}'`);
+    const homeworkTeacherIds = await db.query(`SELECT DISTINCT	a.createUserId FROM	form_rate_homework a WHERE	a.class_id = '${classId}'`);
+    const eveningTeacherIds = await db.query(`SELECT DISTINCT	a.createUserId FROM	form_rate_evening a WHERE	a.class_id = '${classId}'`);
+    const morningTeacherIds = await db.query(`SELECT DISTINCT	a.createUserId FROM	form_rate_morning a WHERE	a.class_id = '${classId}'`);
     // const habitTeacherIds = await db.query(`SELECT DISTINCT	a.teacher_id FROM	form_habit_info a WHERE	a.classname = '${className}'`)
 
-    let teacherIds = [...classroomTeacherIds.map(item => item.createUserId), ...homeworkTeacherIds.map(item => item.createUserId), ...eveningTeacherIds.map(item => item.createUserId), ...morningTeacherIds.map(item => item.createUserId)]
+    let teacherIds = [ ...classroomTeacherIds.map(item => item.createUserId), ...homeworkTeacherIds.map(item => item.createUserId), ...eveningTeacherIds.map(item => item.createUserId), ...morningTeacherIds.map(item => item.createUserId) ];
     teacherIds = Array.from(new Set(teacherIds));
-    const Sheets = {'综合': []};
+    const Sheets = { '综合': [] };
 
     const teacherList = [];
     for (let i = 0; i < teacherIds.length; i++) {
@@ -344,13 +346,14 @@ class ExportsController extends Controller {
     }
     // console.log(all);
     all.sort((a, b) => b.综合得分 - a.综合得分);
-    console.log('sql查询完毕，正在生成Excel')
-    const data = [{'测试1': 'hello', age: 1}, {name: 'world', age: 2}]
+    console.log('sql查询完毕，正在生成Excel');
+    const data = [ { '测试1': 'hello', age: 1 }, { name: 'world', age: 2 } ];
     const jsonWorkSheet = xlsx.utils.json_to_sheet(data);
-    Object.keys(Sheets).forEach(key => {
-      Sheets[key].sort((a, b) => b.综合得分 - a.综合得分);
-      Sheets[key] = xlsx.utils.json_to_sheet(Sheets[key]);
-    })
+    Object.keys(Sheets)
+      .forEach(key => {
+        Sheets[key].sort((a, b) => b.综合得分 - a.综合得分);
+        Sheets[key] = xlsx.utils.json_to_sheet(Sheets[key]);
+      });
     Sheets['综合'] = xlsx.utils.json_to_sheet(all);
     const workBook = {
       SheetNames: Object.keys(Sheets),
@@ -359,7 +362,7 @@ class ExportsController extends Controller {
     const filename = `${className}.xlsx`;
     const filePath = path.resolve(this.app.config.baseDir, filename);
     await xlsx.writeFile(workBook, filePath);
-    console.log('Excel已生成')
+    console.log('Excel已生成');
     // this.ctx.attachment(filename);
     // this.ctx.body = fs.createReadStream(filePath);
     // fs.unlink(filePath, err => {
@@ -376,12 +379,13 @@ class ExportsController extends Controller {
     let json = xlsx.utils.sheet_to_json(workSheetsFromFile.Sheets[workSheetsFromFile.SheetNames[0]]);
     const db = this.app.mysql.get('ry');
 
-    const results = await db.query(clazz())
-    const classMapList = results.filter(clazz => clazz.ancestors.split(',').length >= 3).map(clazz => ({
-      id: clazz.dept_id,
-      className: clazz.dept_name,
-      grade: clazz.parent_name
-    }));
+    const results = await db.query(clazz());
+    const classMapList = results.filter(clazz => clazz.ancestors.split(',').length >= 3)
+      .map(clazz => ({
+        id: clazz.dept_id,
+        className: clazz.dept_name,
+        grade: clazz.parent_name
+      }));
 
     const userList = await db.select('sys_user');
     const userIdMap = {};
@@ -396,12 +400,12 @@ class ExportsController extends Controller {
     });
 
     const lessonList = await db.select('sys_dict_data', {
-      where: {dict_type: 'form_lesson'},
+      where: { dict_type: 'form_lesson' },
     });
     const lessonMap = {};
     lessonList.forEach(item => {
       lessonMap[item.dict_label] = item.dict_value;
-    })
+    });
 
     let classList = [];
     const errTeacherNameList = [];
@@ -410,43 +414,44 @@ class ExportsController extends Controller {
         className: '',
         teacherList: []
       };
-      Object.keys(row).forEach((key, index) => {
-        let item = row[key];
-        if (index < 2) {
-          return
-        }
-        if (index === 2) {
-          item = item.toString();
-          const gradeName = gradeMap[item.split('.')[0]];
-          const clazz = classMap[item.split('.')[1]];
-          obj.className = gradeName + clazz;
-          obj.classId = classIdMap[obj.className];
-          if (!obj.classId) {
-            console.log('error', obj.className)
+      Object.keys(row)
+        .forEach((key, index) => {
+          let item = row[key];
+          if (index < 2) {
+            return;
           }
-          return;
-        }
-        item = item.trim();
-        if (['无', '外聘', '否', '外聘老师', '代课', '不知道'].includes(item)) {
-          return;
-        }
-        if (!userIdMap[item]) {
-          // console.log('用户id查找失败:', item);
-          errTeacherNameList.push(item);
-          return;
-        }
-        if (!lessonMap[key]) {
-          console.log(key)
-        }
-        obj.teacherList.push({
-          lessonId: lessonMap[key],
-          teacherName: item,
-          teacherId: userIdMap[item]
-        });
+          if (index === 2) {
+            item = item.toString();
+            const gradeName = gradeMap[item.split('.')[0]];
+            const clazz = classMap[item.split('.')[1]];
+            obj.className = gradeName + clazz;
+            obj.classId = classIdMap[obj.className];
+            if (!obj.classId) {
+              console.log('error', obj.className);
+            }
+            return;
+          }
+          item = item.trim();
+          if ([ '无', '外聘', '否', '外聘老师', '代课', '不知道' ].includes(item)) {
+            return;
+          }
+          if (!userIdMap[item]) {
+            // console.log('用户id查找失败:', item);
+            errTeacherNameList.push(item);
+            return;
+          }
+          if (!lessonMap[key]) {
+            console.log(key);
+          }
+          obj.teacherList.push({
+            lessonId: lessonMap[key],
+            teacherName: item,
+            teacherId: userIdMap[item]
+          });
 
-      });
+        });
       classList.push(obj);
-    })
+    });
     console.log(Array.from(new Set(errTeacherNameList)));
     // console.log(classList);
     for (let i = 0; i < classList.length; i++) {
@@ -455,7 +460,7 @@ class ExportsController extends Controller {
         teacher_id: '',
         class_id: item.classId,
         lesson_id: ''
-      }
+      };
       for (let j = 0; j < item.teacherList.length; j++) {
         const teacherObj = item.teacherList[j];
         row.teacher_id = teacherObj.teacherId;
@@ -474,7 +479,7 @@ class ExportsController extends Controller {
       2: '良好',
       3: '一般',
       4: '差'
-    }
+    };
     // const results = await db.query(clazz())
     // const classMapList = results.filter(clazz => clazz.ancestors.split(',').length >= 3).map(clazz => ({
     //   id: clazz.dept_id,
@@ -487,7 +492,7 @@ class ExportsController extends Controller {
     // });
     const rateList = await db.query(`SELECT (select user_name from sys_user WHERE user_id = teacher_id) as teacherName, teacher_id, class_id, rateResult, position FROM form_virtotea_rate`);
 
-    const rateMap = {}
+    const rateMap = {};
     const rateMapParent = {};
     const rateMapStudent = {};
 
@@ -522,58 +527,61 @@ class ExportsController extends Controller {
     const result = [];
     const resultParent = [];
     const resultStudent = [];
-    Object.keys(rateMap).forEach(teacherName => {
-      const rateObj = rateMap[teacherName];
-      const all = rateObj.优秀 + rateObj.良好 + rateObj.一般 + rateObj.差;
+    Object.keys(rateMap)
+      .forEach(teacherName => {
+        const rateObj = rateMap[teacherName];
+        const all = rateObj.优秀 + rateObj.良好 + rateObj.一般 + rateObj.差;
 
-      const percentObj = {
-        '优秀占比(%)': Math.floor((rateObj.优秀 / all) * 10000) / 100, //+ '%',
-        '良好占比(%)': Math.floor((rateObj.良好 / all) * 10000) / 100, //+ '%',
-        '一般占比(%)': Math.floor((rateObj.一般 / all) * 10000) / 100, //+ '%',
-        '差占比(%)': Math.floor((rateObj.良好 / all) * 10000) / 100, //+ '%',
-      }
+        const percentObj = {
+          '优秀占比(%)': Math.floor((rateObj.优秀 / all) * 10000) / 100, //+ '%',
+          '良好占比(%)': Math.floor((rateObj.良好 / all) * 10000) / 100, //+ '%',
+          '一般占比(%)': Math.floor((rateObj.一般 / all) * 10000) / 100, //+ '%',
+          '差占比(%)': Math.floor((rateObj.良好 / all) * 10000) / 100, //+ '%',
+        };
 
-      result.push({
-        教师: teacherName,
-        ...rateObj,
-        ...percentObj
-      })
-    })
-    Object.keys(rateMapParent).forEach(teacherName => {
-      const rateObj = rateMapParent[teacherName];
-      const all = rateObj.优秀 + rateObj.良好 + rateObj.一般 + rateObj.差;
+        result.push({
+          教师: teacherName,
+          ...rateObj,
+          ...percentObj
+        });
+      });
+    Object.keys(rateMapParent)
+      .forEach(teacherName => {
+        const rateObj = rateMapParent[teacherName];
+        const all = rateObj.优秀 + rateObj.良好 + rateObj.一般 + rateObj.差;
 
-      const percentObj = {
-        '优秀占比(%)': Math.floor((rateObj.优秀 / all) * 10000) / 100, //+ '%',
-        '良好占比(%)': Math.floor((rateObj.良好 / all) * 10000) / 100, //+ '%',
-        '一般占比(%)': Math.floor((rateObj.一般 / all) * 10000) / 100, //+ '%',
-        '差占比(%)': Math.floor((rateObj.良好 / all) * 10000) / 100, //+ '%',
-      }
+        const percentObj = {
+          '优秀占比(%)': Math.floor((rateObj.优秀 / all) * 10000) / 100, //+ '%',
+          '良好占比(%)': Math.floor((rateObj.良好 / all) * 10000) / 100, //+ '%',
+          '一般占比(%)': Math.floor((rateObj.一般 / all) * 10000) / 100, //+ '%',
+          '差占比(%)': Math.floor((rateObj.良好 / all) * 10000) / 100, //+ '%',
+        };
 
-      resultParent.push({
-        教师: teacherName,
-        ...rateObj,
-        ...percentObj
-      })
-    })
-    Object.keys(rateMapStudent).forEach(teacherName => {
-      const rateObj = rateMapStudent[teacherName];
-      const all = rateObj.优秀 + rateObj.良好 + rateObj.一般 + rateObj.差;
+        resultParent.push({
+          教师: teacherName,
+          ...rateObj,
+          ...percentObj
+        });
+      });
+    Object.keys(rateMapStudent)
+      .forEach(teacherName => {
+        const rateObj = rateMapStudent[teacherName];
+        const all = rateObj.优秀 + rateObj.良好 + rateObj.一般 + rateObj.差;
 
-      const percentObj = {
-        '优秀占比(%)': Math.floor((rateObj.优秀 / all) * 10000) / 100, //+ '%',
-        '良好占比(%)': Math.floor((rateObj.良好 / all) * 10000) / 100, //+ '%',
-        '一般占比(%)': Math.floor((rateObj.一般 / all) * 10000) / 100, //+ '%',
-        '差占比(%)': Math.floor((rateObj.良好 / all) * 10000) / 100, //+ '%',
-      }
+        const percentObj = {
+          '优秀占比(%)': Math.floor((rateObj.优秀 / all) * 10000) / 100, //+ '%',
+          '良好占比(%)': Math.floor((rateObj.良好 / all) * 10000) / 100, //+ '%',
+          '一般占比(%)': Math.floor((rateObj.一般 / all) * 10000) / 100, //+ '%',
+          '差占比(%)': Math.floor((rateObj.良好 / all) * 10000) / 100, //+ '%',
+        };
 
-      resultStudent.push({
-        教师: teacherName,
-        ...rateObj,
-        ...percentObj
-      })
-    })
-    const Sheets = {'全部': [], '家长': [], '学生': ''}
+        resultStudent.push({
+          教师: teacherName,
+          ...rateObj,
+          ...percentObj
+        });
+      });
+    const Sheets = { '全部': [], '家长': [], '学生': '' };
     Sheets['全部'] = xlsx.utils.json_to_sheet(result);
     Sheets['家长'] = xlsx.utils.json_to_sheet(resultParent);
     Sheets['学生'] = xlsx.utils.json_to_sheet(resultStudent);
@@ -584,7 +592,7 @@ class ExportsController extends Controller {
     const filename = `教师评价汇总.xlsx`;
     const filePath = path.resolve(this.app.config.baseDir, filename);
     await xlsx.writeFile(workBook, filePath);
-    console.log('Excel已生成')
+    console.log('Excel已生成');
   }
 
 
@@ -597,12 +605,13 @@ class ExportsController extends Controller {
     // }); //读取文件目录
     const db = this.app.mysql.get('ry');
 
-    const results = await db.query(clazz())
-    const classMapList = results.filter(clazz => clazz.ancestors.split(',').length >= 3).map(clazz => ({
-      id: clazz.dept_id,
-      className: clazz.dept_name,
-      grade: clazz.parent_name
-    }));
+    const results = await db.query(clazz());
+    const classMapList = results.filter(clazz => clazz.ancestors.split(',').length >= 3)
+      .map(clazz => ({
+        id: clazz.dept_id,
+        className: clazz.dept_name,
+        grade: clazz.parent_name
+      }));
     const classIdMap = {};
     classMapList.forEach(item => {
       classIdMap[item.grade + item.className] = item.id;
@@ -612,62 +621,148 @@ class ExportsController extends Controller {
     const stuToClassIdMap = {};
     base_stutocla_info.forEach(item => {
       stuToClassIdMap[item.student_id] = item.class_id;
-    })
+    });
 
     const base_student_info = await db.select('base_student_info');
 
 
     const result = [];
-    Object.keys(grade7.Sheets).forEach(className => {
-      let json = xlsx.utils.sheet_to_json(grade7.Sheets[className]);
-      const classNameWord = gradeMap[className.split('.')[0]] + classMap[className.split('.')[1]];
-      const classId = classIdMap[classNameWord];
-      console.log(classNameWord, classId);
-      // result[classNameWord] = json;
-      json.forEach(row => {
-        const insertObj = {class_id: classId, student_name: '', student_id: ''}
-        Object.keys(row).forEach(header => {
-          if (header === '序号' || header === '班级') {
-            return
-          }
-          if (header === '姓名') {
-            const studentName = row[header];
-            insertObj.student_name = studentName;
-            const stuList = base_student_info.filter(stu => stu.name === studentName);
-            if (!stuList.length) {
-              console.log('error!!', studentName);
-              return;
-            }
-            if (stuList.length === 1) {
-              insertObj.student_id = stuList[0].idcard;
-            } else {
-              const student = stuList.find(stu => stuToClassIdMap[stu.id] == classId);
-              if (!student) {
-                console.log('error!!同名学生没找到班级', studentName, stuList.map(stu => stuToClassIdMap[stu.id]));
-                return
+    Object.keys(grade7.Sheets)
+      .forEach(className => {
+        let json = xlsx.utils.sheet_to_json(grade7.Sheets[className]);
+        const classNameWord = gradeMap[className.split('.')[0]] + classMap[className.split('.')[1]];
+        const classId = classIdMap[classNameWord];
+        console.log(classNameWord, classId);
+        // result[classNameWord] = json;
+        json.forEach(row => {
+          const insertObj = { class_id: classId, student_name: '', student_id: '' };
+          Object.keys(row)
+            .forEach(header => {
+              if (header === '序号' || header === '班级') {
+                return;
               }
-              insertObj.student_id = student.idcard;
-            }
-            return;
-          }
-          if (!confirmLessonMap[header]) {
-            return
-          }
-          insertObj[confirmLessonMap[header]] = row[header];
+              if (header === '姓名') {
+                const studentName = row[header];
+                insertObj.student_name = studentName;
+                const stuList = base_student_info.filter(stu => stu.name === studentName);
+                if (!stuList.length) {
+                  console.log('error!!', studentName);
+                  return;
+                }
+                if (stuList.length === 1) {
+                  insertObj.student_id = stuList[0].idcard;
+                } else {
+                  const student = stuList.find(stu => stuToClassIdMap[stu.id] == classId);
+                  if (!student) {
+                    console.log('error!!同名学生没找到班级', studentName, stuList.map(stu => stuToClassIdMap[stu.id]));
+                    return;
+                  }
+                  insertObj.student_id = student.idcard;
+                }
+                return;
+              }
+              if (!confirmLessonMap[header]) {
+                return;
+              }
+              insertObj[confirmLessonMap[header]] = row[header];
+            });
+          result.push(insertObj);
         });
-        result.push(insertObj);
-      })
-    })
+      });
     for (let j = 0; j < result.length; j++) {
       const count = await db.insert('form_parents_confirm', result[j]);
       console.log(count);
     }
     this.ctx.body = result;
   }
+
+  /**
+   * 导出体育成绩
+   * @returns {Promise<void>}
+   */
+  async exportSportScore() {
+    const db = this.app.mysql.get('ry');
+    //清空导出文件夹
+    const dirName = path.resolve(this.app.config.baseDir, '体育成绩导出');
+    delDir(dirName);
+    fs.mkdirSync(dirName);
+    //获取所有任务
+    const taskList = await db.select('form_sport_task');
+    console.log(taskList);
+    const teacherNameMap = {};
+    taskList.forEach(item => {
+      teacherNameMap[item.teacher_name] = teacherNameMap[item.teacher_name] || [];
+      teacherNameMap[item.teacher_name].push(item);
+    });
+    const teacherNameList = Object.keys(teacherNameMap);
+
+    for (let i = 0; i < teacherNameList.length; i++) {
+      const list = teacherNameMap[teacherNameList[i]];
+      const projectNameMap = {};
+      const teacherNameDir = path.resolve(dirName, teacherNameList[i]);
+      fs.mkdirSync(teacherNameDir);
+      for (let j = 0; j < list.length; j++) {
+        const task = list[j];
+        const studentList = await db.query(getStudentListByClassId(task.class_id));
+        const scoreList = await db.select('form_sport_score', {
+          where: {
+            score_task_id: task.id
+          }
+        });
+        if (!scoreList.length) continue;
+        const projectName = scoreList[0].project_name;
+        const projectUnit = scoreList[0].project_unit;
+        projectNameMap[projectName] = projectNameMap[projectName] || [];
+        const studentListScored = studentList.map(student => {
+          const result = {
+            学号: student.scode,
+            姓名: student.name,
+            性别: student.sex,
+            项目: projectName,
+            成绩: '',
+            单位: projectUnit,
+            录入时间: ''
+          };
+          const score = scoreList.find(item => item.student_id === student.id);
+          if (score) {
+            result.录入时间 = score.update_time;
+            if(projectUnit === '秒'){
+              score.score = formatUnit(score.score)
+            }
+            result.成绩 = score.score;
+          }
+          return result;
+        });
+        projectNameMap[projectName].push({
+          className: task.class_name,
+          list: studentListScored
+        });
+      }
+      const projectNameList = Object.keys(projectNameMap);
+      for (let index = 0; index < projectNameList.length; index++) {
+        const classList = projectNameMap[projectNameList[index]];
+        const Sheets = {};
+        for (let index1 = 0; index1 < classList.length; index1++) {
+          const item = classList[index1];
+          Sheets[item.className] = xlsx.utils.json_to_sheet(item.list);
+        }
+        const workBook = {
+          SheetNames: Object.keys(Sheets),
+          Sheets: Sheets
+        };
+        const filePath = path.resolve(teacherNameDir, `${projectNameList[index]}.xlsx`);
+        await xlsx.writeFile(workBook, filePath);
+      }
+    }
+
+    this.ctx.body = {
+      error: false,
+    };
+  }
 }
 
 function makeSQL(tableName, studentid, teacherId) {
-  const beginDate = '2020-09-20'
+  const beginDate = '2020-09-20';
   if (tableName === 'form_habit_info') {
     let sql = `SELECT
 count( CASE WHEN a.rateresult = 'excellent' THEN 1 ELSE NULL END ) AS 'A',
@@ -678,7 +773,7 @@ ${tableName} a
 WHERE
 a.student_id = '${studentid}' AND ratedate >= '${beginDate}'`;
     if (teacherId) {
-      sql += ` AND teacher_id = '${teacherId}'`
+      sql += ` AND teacher_id = '${teacherId}'`;
     }
     return sql;
   }
@@ -691,7 +786,7 @@ ${tableName} a
 WHERE
 a.student_id = '${studentid}' AND createdate >= '${beginDate}'`;
   if (teacherId) {
-    sql += ` AND createUserId = '${teacherId}'`
+    sql += ` AND createUserId = '${teacherId}'`;
   }
   return sql;
 }
@@ -716,7 +811,50 @@ const clazz = () => {
     d.create_time,
     ( SELECT dept_name FROM sys_dept WHERE dept_id = d.parent_id ) parent_name
 FROM
-    sys_dept d`
+    sys_dept d`;
+};
+
+//todo 放到student Service中
+function getStudentListByClassId(classId) {
+  return `
+  SELECT b.id, b.scode, b.name, CASE b.sex
+WHEN '0' THEN '男'
+WHEN '1' THEN '女'
+ELSE '其他' END AS sex  FROM base_stutocla_info a 
+INNER JOIN base_student_info b 
+ON a.class_id = ${classId} AND b.id = a.student_id AND b.STATUS = 0
+ORDER BY b.scode + 0 ASC
+`;
+}
+
+function delDir(path) {
+  let files = [];
+  if (fs.existsSync(path)) {
+    files = fs.readdirSync(path);
+    files.forEach((file, index) => {
+      let curPath = path + '/' + file;
+      if (fs.statSync(curPath)
+        .isDirectory()) {
+        delDir(curPath); //递归删除文件夹
+      } else {
+        fs.unlinkSync(curPath); //删除文件
+      }
+    });
+    fs.rmdirSync(path);
+  }
+}
+
+function formatUnit(num) {
+  var result = '', counter = 0;
+  num = (num || 0).toString();
+  for (var i = num.length - 1; i >= 0; i--) {
+    counter++;
+    result = num.charAt(i) + result;
+    if (!(counter % 2) && i != 0) {
+      result = ':' + result;
+    }
+  }
+  return result;
 }
 
 module.exports = ExportsController;

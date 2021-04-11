@@ -31,11 +31,18 @@ module.exports = app => {
   router.post('/cancelAsk', cancelAsk);
   router.post('/leaveApproval', leaveApproval);
   router.post('/addCheckoutLeave', addCheckoutLeave);
-  const { index: exports, importClazzToLesson, exportTeacherRate, importScoreConfirm } = controller.exports;
+  const {
+    index: exports,
+    exportSportScore,
+    importClazzToLesson,
+    exportTeacherRate,
+    importScoreConfirm
+  } = controller.exports;
   router.get('/exports', exports);
   router.get('/importClazzToLesson', importClazzToLesson);
   router.get('/exportTeacherRate', exportTeacherRate);
   router.get('/importScoreConfirm', importScoreConfirm);
+  router.get('/exportSportScore', exportSportScore);
   const {
     searchRateDetail,
     cancelSubstitute,
@@ -95,7 +102,7 @@ module.exports = app => {
   router.post('/getSportTaskList', getSportTaskList);
   router.post('/getSportScoreByTaskId', getSportScoreByTaskId);
   router.post('/deleteSportTaskAndScore', deleteSportTaskAndScore);
-  const {getScoreStatist, getClassStudentStat} = controller.statistic;
+  const { getScoreStatist, getClassStudentStat } = controller.statistic;
   router.post('/getScoreStatist', getScoreStatist);
   router.post('/getClassStudentStat', getClassStudentStat);
 };
