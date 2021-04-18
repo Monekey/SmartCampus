@@ -9,7 +9,7 @@ class StudentService extends Service {
    * @param studentName
    * @returns {Promise<*>}
    */
-  async query({idCard, studentName}) {
+  async query({ idCard, studentName }) {
     const db = this.app.mysql.get('ry');
 
     return await db.get('base_student_info', {
@@ -31,9 +31,17 @@ class StudentService extends Service {
     });
   }
 
+  async getStudentById(id) {
+    const db = this.app.mysql.get('ry');
+
+    return await db.get('base_student_info', {
+      id: id,
+    });
+  }
+
   async getClassIdByStuId(studentId) {
     const db = this.app.mysql.get('ry');
-    const result = await db.get('base_stutocla_info', {student_id: studentId});
+    const result = await db.get('base_stutocla_info', { student_id: studentId });
     if (!result || !result.class_id) {
       return null;
     }
@@ -42,7 +50,7 @@ class StudentService extends Service {
 
   async getLeaderByClassId(classId) {
     const db = this.app.mysql.get('ry');
-    return await db.get('sys_user', {dept_id: classId});
+    return await db.get('sys_user', { dept_id: classId });
   }
 }
 

@@ -5,6 +5,8 @@
  */
 module.exports = app => {
   const { router, controller } = app;
+  // 青苗关爱计划
+  require('./routers/qingmiao')(app);
   const { index } = controller.home;
   router.get('/', index);
   const {
@@ -79,11 +81,12 @@ module.exports = app => {
   router.post('/substitute', substitute);
   router.post('/cancelSubstitute', cancelSubstitute);
   router.post('/searchRateDetail', searchRateDetail);
-  const { getStudentList, addStudent, saveStudentList, disableStudent } = controller.student;
+  const { getStudentList, addStudent, saveStudentList, disableStudent, getStudentInfo } = controller.student;
   router.post('/getStudentList', getStudentList);
   router.post('/addStudent', addStudent);
   router.post('/saveStudentList', saveStudentList);
   router.post('/disableStudent', disableStudent);
+  router.post('/getStudentInfo', getStudentInfo);
   const {
     getSportProject,
     addNewSportTask,

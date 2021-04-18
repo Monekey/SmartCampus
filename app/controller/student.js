@@ -6,6 +6,20 @@ const Controller = require('egg').Controller;
  * 学生
  */
 class StudentController extends Controller {
+
+  /**
+   * 根据id获取学生信息
+   * @returns {Promise<void>}
+   */
+  async getStudentInfo() {
+    this.ctx.validate({
+      id: { type: 'string' },
+    });
+    const requestParams = this.ctx.request.body;
+    const studentInfo = await this.ctx.service.student.getStudentById(requestParams.id);
+    this.ctx.body = studentInfo;
+  }
+
   /**
    * 获取班级学生列表
    * @returns {Promise<void>}
