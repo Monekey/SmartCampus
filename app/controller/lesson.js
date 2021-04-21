@@ -12,7 +12,7 @@ const RateTypeMap = {
   'morning': '3',
   'evening': '4',
   'habit': '5'
-}
+};
 
 /**
  * 课程
@@ -25,7 +25,7 @@ class LessonController extends Controller {
 
     this.ctx.body = {
       result: result
-    }
+    };
   }
 
   /**
@@ -34,9 +34,9 @@ class LessonController extends Controller {
   async getClassScheduleList() {
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
-    console.log(requestParams)
-    const result = await db.query(listSql(requestParams.beginDate, requestParams.endDate, requestParams.userId))
-    this.ctx.body = result
+    console.log(requestParams);
+    const result = await db.query(listSql(requestParams.beginDate, requestParams.endDate, requestParams.userId, requestParams.classId));
+    this.ctx.body = result;
   }
 
   /**
@@ -44,12 +44,12 @@ class LessonController extends Controller {
    */
   async addClassSchedule() {
     this.ctx.validate({
-      userId: {type: 'number'},
-      teacherId: {type: 'number'},
-      classTime: {type: 'string'},
-      className: {type: 'string'},
-      classDate: {type: 'string'},
-      lessonId: {type: 'string'},
+      userId: { type: 'number' },
+      teacherId: { type: 'number' },
+      classTime: { type: 'string' },
+      className: { type: 'string' },
+      classDate: { type: 'string' },
+      lessonId: { type: 'string' },
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
@@ -62,7 +62,7 @@ class LessonController extends Controller {
         teacher_id: requestParams.teacherId,
         classname: requestParams.className,
         lesson_id: requestParams.lessonId,
-      })
+      });
     } else {
       //验证当天课程的占用情况
       const result = await db.select(ScheduleTable, {
@@ -74,8 +74,8 @@ class LessonController extends Controller {
       });
       console.log(result);
       if (result.length) {
-        const teacher = await db.get('sys_user', {user_id: result[0].teacher_id})
-        return this.ctx.setError(`该课次被${teacher.user_name}占用`)
+        const teacher = await db.get('sys_user', { user_id: result[0].teacher_id });
+        return this.ctx.setError(`该课次被${teacher.user_name}占用`);
       }
       let insertId;
       try {
@@ -90,13 +90,13 @@ class LessonController extends Controller {
             lesson_id: requestParams.lessonId,
           });
           insertId = result.insertId;
-        })
+        });
       } catch (e) {
         this.logger.error(JSON.stringify(e));
-        return this.ctx.setError('参数错误')
+        return this.ctx.setError('参数错误');
       }
 
-      this.ctx.body = {error: false, id: insertId}
+      this.ctx.body = { error: false, id: insertId };
     }
   }
 
@@ -105,7 +105,7 @@ class LessonController extends Controller {
    */
   async fillClassSchedule() {
     this.ctx.validate({
-      id: {type: 'number'},
+      id: { type: 'number' },
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
@@ -125,13 +125,13 @@ class LessonController extends Controller {
             classdate: new Date(currTime),
             update_time: conn.literals.now,
           });
-        })
+        });
       } catch (e) {
-        errorList.push({date: new Date(currTime)})
+        errorList.push({ date: new Date(currTime) });
       }
       currTime += OneWeekMillionSecond;
     }
-    this.ctx.body = {errorList}
+    this.ctx.body = { errorList };
   }
 
   /**
@@ -139,22 +139,22 @@ class LessonController extends Controller {
    */
   async deleteClassSchedule() {
     this.ctx.validate({
-      id: {type: 'number'},
+      id: { type: 'number' },
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
     const fillObj = await db.get(ScheduleTable, {
       id: requestParams.id
     });
-    await db.delete(ScheduleTable, {id: requestParams.id});
+    await db.delete(ScheduleTable, { id: requestParams.id });
     this.ctx.body = {
       error: false,
-    }
+    };
     //删除之前的
     let currTime = new Date(fillObj.classdate).getTime() + OneWeekMillionSecond;
     const endTime = new Date(TermEnd).getTime();
 
-    const errorList = []
+    const errorList = [];
     while (currTime <= endTime) {
       try {
         await db.beginTransactionScope(async conn => {
@@ -165,9 +165,9 @@ class LessonController extends Controller {
             teacher_id: fillObj.teacher_id,
             lesson_id: fillObj.lesson_id
           });
-        })
+        });
       } catch (e) {
-        errorList.push({date: new Date(currTime)})
+        errorList.push({ date: new Date(currTime) });
       }
       currTime += OneWeekMillionSecond;
     }
@@ -178,14 +178,14 @@ class LessonController extends Controller {
    */
   async getClassroomRateList() {
     this.ctx.validate({
-      userId: {type: 'number'},
-      beginDate: {type: 'string'},
-      endDate: {type: 'string'},
+      userId: { type: 'number' },
+      beginDate: { type: 'string' },
+      endDate: { type: 'string' },
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
     const result = await db.query(rateListSql(requestParams.beginDate, requestParams.endDate, requestParams.userId));
-    this.ctx.body = result
+    this.ctx.body = result;
   }
 
   /**
@@ -194,18 +194,18 @@ class LessonController extends Controller {
   async getClassSchedule() {
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
-    const result = await db.get('v_form_class_schedule', {...requestParams});
+    const result = await db.get('v_form_class_schedule', { ...requestParams });
     if (result) {
-      const rated = await db.get('form_rate_classroom', {schedule_id: result.id});
+      const rated = await db.get('form_rate_classroom', { schedule_id: result.id });
       this.ctx.body = {
         data: result,
         rated: !!rated
-      }
+      };
     } else {
       this.ctx.body = {
         data: result,
         rated: false
-      }
+      };
     }
 
   }
@@ -217,8 +217,8 @@ class LessonController extends Controller {
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
     this.ctx.body = {
-      data: await db.get('sys_user', {...requestParams})
-    }
+      data: await db.get('sys_user', { ...requestParams })
+    };
   }
 
   /**
@@ -226,15 +226,15 @@ class LessonController extends Controller {
    */
   async getClassroomRateListCurriculum() {
     this.ctx.validate({
-      userId: {type: 'number'},
-      beginDate: {type: 'string'},
-      endDate: {type: 'string'},
-      type: {type: 'string'},
+      userId: { type: 'number' },
+      beginDate: { type: 'string' },
+      endDate: { type: 'string' },
+      type: { type: 'string' },
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
     const result = await db.query(rateListSqlCurriculum(requestParams.beginDate, requestParams.endDate, requestParams.userId, requestParams.type));
-    this.ctx.body = result
+    this.ctx.body = result;
   }
 
   /**
@@ -245,10 +245,10 @@ class LessonController extends Controller {
     const requestParams = this.ctx.request.body;
     let classId;
     if (requestParams.scheduleId) {
-      const schedule = await db.get(ScheduleTable, {id: requestParams.scheduleId});
+      const schedule = await db.get(ScheduleTable, { id: requestParams.scheduleId });
       classId = schedule.class_id;
     } else if (requestParams.curriculumId) {
-      const curriculum = await db.get('form_rate_curriculum', {id: requestParams.curriculumId});
+      const curriculum = await db.get('form_rate_curriculum', { id: requestParams.curriculumId });
       classId = curriculum.class_id;
     }
     const studentList = await db.query(stuSql(classId));
@@ -260,7 +260,7 @@ class LessonController extends Controller {
    */
   async searchRateStudentList() {
     this.ctx.validate({
-      type: {type: 'string'},
+      type: { type: 'string' },
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
@@ -286,16 +286,16 @@ class LessonController extends Controller {
    */
   async addClassroomRate() {
     this.ctx.validate({
-      userId: {type: 'number'},
-      studentList: {type: 'array'},
-      type: {type: 'string'},
-      operate: {type: 'string'},
+      userId: { type: 'number' },
+      studentList: { type: 'array' },
+      type: { type: 'string' },
+      operate: { type: 'string' },
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
     const insertList = [];
     if (requestParams.scheduleId) {
-      const schedule = await db.get(ScheduleTable, {id: requestParams.scheduleId});
+      const schedule = await db.get(ScheduleTable, { id: requestParams.scheduleId });
       requestParams.studentList.forEach(item => {
         insertList.push({
           id: requestParams.operate === 'add' ? null : item.id,
@@ -315,10 +315,10 @@ class LessonController extends Controller {
           remarks: item.remarks,
           classCurriculumId: null,
           schedule_id: requestParams.scheduleId
-        })
-      })
+        });
+      });
     } else if (requestParams.curriculumId) {
-      const curriculum = await db.get('form_rate_curriculum', {id: requestParams.curriculumId});
+      const curriculum = await db.get('form_rate_curriculum', { id: requestParams.curriculumId });
       requestParams.studentList.forEach(item => {
         insertList.push({
           id: requestParams.operate === 'add' ? null : item.id,
@@ -338,8 +338,8 @@ class LessonController extends Controller {
           remarks: item.remarks,
           classCurriculumId: requestParams.curriculumId,
           // schedule_id: null
-        })
-      })
+        });
+      });
     }
     let count = 0;
     await db.beginTransactionScope(async conn => {
@@ -356,7 +356,7 @@ class LessonController extends Controller {
           const result = await conn.update(`form_rate_${requestParams.type}`, {
             ...insertList[i],
             createdate: conn.literals.now,
-          }, {where: {id: insertList[i].id}});
+          }, { where: { id: insertList[i].id } });
           count += result.affectedRows;
         }
       }
@@ -365,7 +365,7 @@ class LessonController extends Controller {
     this.ctx.body = {
       error: false,
       count
-    }
+    };
   }
 
 
@@ -374,16 +374,16 @@ class LessonController extends Controller {
    */
   async addRateCurriculum() {
     this.ctx.validate({
-      userId: {type: 'number'},
-      userName: {type: 'string'},
-      type: {type: 'string'},
-      classId: {type: 'string'},
+      userId: { type: 'number' },
+      userName: { type: 'string' },
+      type: { type: 'string' },
+      classId: { type: 'string' },
       // classTime: {type: 'string'},
       // lessonId: {type: 'string'},
-      className: {type: 'string'},
+      className: { type: 'string' },
       // lessonName: {type: 'string'},
       // classTimeName: {type: 'string'},
-      classDate: {type: 'string'},
+      classDate: { type: 'string' },
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
@@ -410,12 +410,12 @@ class LessonController extends Controller {
       });
     } catch (e) {
       this.logger.error(JSON.stringify(e));
-      return this.ctx.setError('参数错误')
+      return this.ctx.setError('参数错误');
     }
     this.ctx.body = {
       error: false,
       insertId
-    }
+    };
   }
 
   /**
@@ -424,7 +424,7 @@ class LessonController extends Controller {
   async deleteClassroomRate() {
     this.ctx.validate({
       // userId: {type: 'number'},
-      type: {type: 'string'},
+      type: { type: 'string' },
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
@@ -451,7 +451,7 @@ class LessonController extends Controller {
    */
   async getDeptFormIdCode() {
     this.ctx.validate({
-      idCode: {type: 'string'},
+      idCode: { type: 'string' },
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
@@ -467,23 +467,23 @@ class LessonController extends Controller {
    */
   async substitute() {
     this.ctx.validate({
-      lessonId: {type: 'string'},
-      userId: {type: 'number'},
-      scheduleId: {type: 'string'},
+      lessonId: { type: 'string' },
+      userId: { type: 'number' },
+      scheduleId: { type: 'string' },
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
     const result = await db.update(ScheduleTable, {
       substitute_lesson_id: requestParams.lessonId,
       substitute_teacher_id: requestParams.userId
-    }, {where: {id: requestParams.scheduleId}});
+    }, { where: { id: requestParams.scheduleId } });
     if (result.affectedRows === 1) {
       this.ctx.body = {
         result,
         error: false
-      }
+      };
     } else {
-      this.ctx.setError('添加代课失败，该课程可能已修改或删除，请重试')
+      this.ctx.setError('添加代课失败，该课程可能已修改或删除，请重试');
     }
 
   }
@@ -493,22 +493,22 @@ class LessonController extends Controller {
    */
   async cancelSubstitute() {
     this.ctx.validate({
-      userId: {type: 'number'},
-      scheduleId: {type: 'string'},
+      userId: { type: 'number' },
+      scheduleId: { type: 'string' },
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
     const result = await db.update(ScheduleTable, {
       substitute_lesson_id: null,
       substitute_teacher_id: null
-    }, {where: {id: requestParams.scheduleId, substitute_teacher_id: requestParams.userId.toString()}});
+    }, { where: { id: requestParams.scheduleId, substitute_teacher_id: requestParams.userId.toString() } });
     if (result.affectedRows === 1) {
       this.ctx.body = {
         result,
         error: false
-      }
+      };
     } else {
-      this.ctx.setError('取消代课失败，该代课信息可能已失效，请重试')
+      this.ctx.setError('取消代课失败，该代课信息可能已失效，请重试');
     }
   }
 
@@ -518,43 +518,47 @@ class LessonController extends Controller {
    */
   async searchRateDetail() {
     this.ctx.validate({
-      studentId: {type: 'string'},
-      beginDate: {type: 'string'},
-      endDate: {type: 'string'},
-      rateType: {type: 'string'},
-      evType: {type: 'string'},
+      studentId: { type: 'string' },
+      beginDate: { type: 'string' },
+      endDate: { type: 'string' },
+      rateType: { type: 'string' },
+      evType: { type: 'string' },
     });
     const db = this.app.mysql.get('ry');
     const requestParams = this.ctx.request.body;
 
     let result = [];
-    if(requestParams.evType !== 'learn'){
-      result = await db.query(searchStudentRateSql(requestParams.studentId, requestParams.beginDate, requestParams.endDate, requestParams.rateType, requestParams.evType))
-    }else{
-      const list1 = await db.query(searchStudentRateSql(requestParams.studentId, requestParams.beginDate, requestParams.endDate, requestParams.rateType, 'evening'))
-      const list2 = await db.query(searchStudentRateSql(requestParams.studentId, requestParams.beginDate, requestParams.endDate, requestParams.rateType, 'morning'))
-      result = [...list1, ...list2]
+    if (requestParams.evType !== 'learn') {
+      result = await db.query(searchStudentRateSql(requestParams.studentId, requestParams.beginDate, requestParams.endDate, requestParams.rateType, requestParams.evType));
+    } else {
+      const list1 = await db.query(searchStudentRateSql(requestParams.studentId, requestParams.beginDate, requestParams.endDate, requestParams.rateType, 'evening'));
+      const list2 = await db.query(searchStudentRateSql(requestParams.studentId, requestParams.beginDate, requestParams.endDate, requestParams.rateType, 'morning'));
+      result = [ ...list1, ...list2 ];
     }
 
     this.ctx.body = {
       error: false,
       result: result
-    }
+    };
   }
 }
 
-function listSql(beginDate, endDate, userId) {
+function listSql(beginDate, endDate, userId, classId) {
   let sql = `SELECT
 *,
 ( SELECT ${'`'}name${'`'} FROM base_lesson_info lesson WHERE CONCAT( 'LE', a.lesson_id ) = lesson.id ) AS lessonName,
 ( SELECT ${'`'}name${'`'} FROM base_lesson_info lesson WHERE CONCAT( 'LE', a.substitute_lesson_id ) = lesson.id ) AS substituteLessonName  
 FROM
 form_class_schedule a
-where classdate >= '${beginDate}' and classdate <= '${endDate}' and 
-(teacher_id = '${userId}' or substitute_teacher_id = '${userId}')
-`;
-  console.log(sql)
-  return sql
+where classdate >= '${beginDate}' and classdate <= '${endDate}'`;
+  if (userId) {
+    sql += ` and 
+(teacher_id = '${userId}' or substitute_teacher_id = '${userId}') `;
+  }
+  if (classId) {
+    sql += ` and class_id = '${classId}' `;
+  }
+  return sql;
 }
 
 function rateListSql(beginDate, endDate, teacherId) {
@@ -621,10 +625,10 @@ function stuSql(classId) {
   SELECT r.* FROM (SELECT * FROM base_stutocla_info a WHERE a.class_id = '${classId}') l
 INNER JOIN base_student_info r ON l.student_id = r.id AND r.\`STATUS\` = 0
 ORDER BY r.scode+0`;
-  return sql
+  return sql;
 }
 
-function searchStudentSql({type, id, idName}) {
+function searchStudentSql({ type, id, idName }) {
   let sql = `
   SELECT
   rateList.*,
@@ -669,11 +673,11 @@ FROM
 sys_dept d
 WHERE
 idcode = '${idcode}'
-`
+`;
   return sql;
 }
 
-function searchStudentRateSql(studentId, beginDate, endDate, rateResult, evType){
+function searchStudentRateSql(studentId, beginDate, endDate, rateResult, evType) {
   return `
   SELECT
   *
@@ -684,7 +688,7 @@ student_id = "${studentId}"
 AND classdate >= "${beginDate}"
 AND classdate <= "${endDate}"
 AND rateresult = '${rateResult}'
-`
+`;
 }
 
 module.exports = LessonController;

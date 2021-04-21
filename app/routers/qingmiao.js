@@ -15,7 +15,14 @@ module.exports = app => {
     updateEvent,
     getEvent,
     updateProblem,
-    getProblem
+    getProblem,
+    deleteProblem,
+    deleteStudy,
+    deleteCommunicate,
+    deleteEvent,
+    setKeyStudent,
+    getKey,
+    getKeyStudentList
   } = controller.qingmiao;
   router.post('/qingmiao/update', update);
   router.post('/qingmiao/getBase', getBase);
@@ -28,4 +35,11 @@ module.exports = app => {
   router.post('/qingmiao/getEvent', getEvent);
   router.post('/qingmiao/updateProblem', updateProblem);
   router.post('/qingmiao/getProblem', getProblem);
+  router.post('/qingmiao/deleteProblem', deleteProblem);
+  router.post('/qingmiao/deleteStudy', deleteStudy);
+  router.post('/qingmiao/deleteCommunicate', deleteCommunicate);
+  router.post('/qingmiao/deleteEvent', deleteEvent);
+  router.post('/qingmiao/setKeyStudent', setKeyStudent);
+  router.post('/qingmiao/getKey', getKey);
+  router.post('/qingmiao/getKeyStudentList', getKeyStudentList);
 };
