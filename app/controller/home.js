@@ -1,15 +1,58 @@
 'use strict';
 
 const Controller = require('egg').Controller;
-const fs = require('fs')
+const fs = require('fs');
 
 class HomeController extends Controller {
   async index() {
-    this.ctx.body = 'hello egg'
+    this.ctx.body = 'hello egg';
+  }
+
+  async SyncQingmiaoRecordDate() {
+    const db = this.app.mysql.get('ry');
+
+    const tables = [ 'form_psychology_communicate', 'form_psychology_problem', 'form_psychology_event', 'form_psychology_study' ];
+
+    for (let i = 0; i < tables.length; i++) {
+      const tableName = tables[i];
+      const list = await db.select(tableName);
+      for (let j = 0; j < list.length; j++) {
+        const item = list[j];
+        await db.update(tableName, { recorddate: item.createdate }, { where: { id: item.id } });
+      }
+    }
+
+    this.ctx.body = { error: false };
+  }
+
+  async SyncStudentSex() {
+    const db = this.app.mysql.get('ry');
+    const list = await db.select('base_student_info');
+    for (let i = 0; i < list.length; i++) {
+      const student = list[i];
+      const sex = student.idcard[student.idcard.length - 2] % 2 === 1 ? '0' : '1';
+      if(student.sex === sex) continue;
+      console.log(666)
+      await db.update('base_student_info', { sex: sex }, { where: { id: student.id } });
+    }
+    this.ctx.body = {error: false}
+  }
+
+  async SyncQingmiaoBase() {
+    const db = this.app.mysql.get('ry');
+    const list = await db.select('form_psychology_base');
+    for (let i = 0; i < list.length; i++) {
+      const base = list[i];
+      const student = await db.get('base_student_info', {id: base.studentid});
+      if(student.sex === base.gender) continue;
+      console.log(student.name)
+      await db.update('form_psychology_base', { gender: student.sex }, { where: { id: base.id } });
+    }
+    this.ctx.body = {error: false}
   }
 
   async index1() {
-    const {ctx, app} = this;
+    const { ctx, app } = this;
     // this.logger.debug('current user: %j', this.app);
     // const db = app.mysql.get('ry');
     // console.log(db);
@@ -186,25 +229,26 @@ class HomeController extends Controller {
     ];
     const db = this.app.mysql.get('ry');
     const promiseArr = arr.map(teacherName => {
-      return db.query(`SELECT '${teacherName}' as teacherName, count(1) as sum FROM \`form_award\`  WHERE create_user_name = '${teacherName}'`)
-    })
-    Promise.all(promiseArr).then(resultArr => {
-      console.log(resultArr);
-      let result = '';
+      return db.query(`SELECT '${teacherName}' as teacherName, count(1) as sum FROM \`form_award\`  WHERE create_user_name = '${teacherName}'`);
+    });
+    Promise.all(promiseArr)
+      .then(resultArr => {
+        console.log(resultArr);
+        let result = '';
 
-      resultArr.map(item => {
-        result += item[0].teacherName + ',' + item[0].sum + '\r\n'
-      })
+        resultArr.map(item => {
+          result += item[0].teacherName + ',' + item[0].sum + '\r\n';
+        });
 
-      fs.writeFile('./result.csv', result, function (error) {
-        if (error) {
-          console.log('写入失败')
-        } else {
-          console.log('写入成功了')
-        }
-      })
-    })
-    ctx.setError('哈啊')
+        fs.writeFile('./result.csv', result, function(error) {
+          if (error) {
+            console.log('写入失败');
+          } else {
+            console.log('写入成功了');
+          }
+        });
+      });
+    ctx.setError('哈啊');
   }
 
 }

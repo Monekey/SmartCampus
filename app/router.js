@@ -7,8 +7,11 @@ module.exports = app => {
   const { router, controller } = app;
   // 青苗关爱计划
   require('./routers/qingmiao')(app);
-  const { index } = controller.home;
+  const { index, SyncQingmiaoRecordDate, SyncStudentSex, SyncQingmiaoBase } = controller.home;
   router.get('/', index);
+  router.get('/SyncQingmiaoRecordDate', SyncQingmiaoRecordDate);
+  router.get('/SyncStudentSex', SyncStudentSex);
+  router.get('/SyncQingmiaoBase', SyncQingmiaoBase);
   const {
     validateStudent,
     validateTeacher,

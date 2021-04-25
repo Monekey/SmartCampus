@@ -22,7 +22,8 @@ module.exports = app => {
     deleteEvent,
     setKeyStudent,
     getKey,
-    getKeyStudentList
+    getKeyStudentList,
+    getStudentList
   } = controller.qingmiao;
   router.post('/qingmiao/update', update);
   router.post('/qingmiao/getBase', getBase);
@@ -42,4 +43,5 @@ module.exports = app => {
   router.post('/qingmiao/setKeyStudent', setKeyStudent);
   router.post('/qingmiao/getKey', getKey);
   router.post('/qingmiao/getKeyStudentList', getKeyStudentList);
+  router.post('/qingmiao/getStudentList', getStudentList);
 };

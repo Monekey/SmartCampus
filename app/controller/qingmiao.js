@@ -63,12 +63,16 @@ class QingmiaoController extends Controller {
       });
     }
     //家庭成元信息
-    const family = await db.select('form_psychology_family', { studentid: requestParams.studentid });
+    const family = await db.select('form_psychology_family', { where: { studentid: requestParams.studentid } });
     // await db.delete('form_psychology_family', { studentid: requestParams.studentid });
     const deleteList = family.filter(item => !memberList.find(newItem => newItem.id === item.id));
     const memberHistory = [];
     for (let i = 0; i < deleteList.length; i++) {
       const item = deleteList[i];
+      if (!item.id) {
+        this.logger.error('青苗关爱工程：删除家庭成员错误');
+        continue;
+      }
       await db.delete('form_psychology_family', { id: item.id });
       memberHistory.push({ type: 2, relation: item.relativesRelationship });
     }
@@ -189,6 +193,7 @@ class QingmiaoController extends Controller {
       communobject: requestParams.communobject,
       communprocess: requestParams.communprocess,
       communeffect: requestParams.communeffect,
+      recorddate: requestParams.recorddate,
       createdate: requestParams.createdate,
       createuserid: requestParams.createuserid,
       createusername: requestParams.createusername,
@@ -257,6 +262,7 @@ class QingmiaoController extends Controller {
       ideological: requestParams.ideological,
       interpersonal: requestParams.interpersonal,
       createdate: requestParams.createdate,
+      recorddate: requestParams.recorddate,
       createuserid: requestParams.createuserid,
       createusername: requestParams.createusername,
       changedate: new Date(),
@@ -308,6 +314,7 @@ class QingmiaoController extends Controller {
       living: requestParams.living,
       educational: requestParams.educational,
       other: requestParams.other,
+      recorddate: requestParams.recorddate,
       createdate: requestParams.createdate,
       createuserid: requestParams.createuserid,
       createusername: requestParams.createusername,
@@ -342,7 +349,7 @@ class QingmiaoController extends Controller {
   }
 
   /**
-   * 更新重大事件
+   * 更新问题
    * @returns {Promise<void>}
    */
   async updateProblem() {
@@ -360,6 +367,7 @@ class QingmiaoController extends Controller {
       intercourse: requestParams.intercourse,
       affectorder: requestParams.affectorder,
       analysis: requestParams.analysis,
+      recorddate: requestParams.recorddate,
       createdate: requestParams.createdate,
       createuserid: requestParams.createuserid,
       createusername: requestParams.createusername,
@@ -535,6 +543,20 @@ class QingmiaoController extends Controller {
     this.ctx.body = keys ? keys.map(item => item.student_id) : [];
   }
 
+  /**
+   * 获取班级学生列表
+   * @returns {Promise<void>}
+   */
+  async getStudentList() {
+    this.ctx.validate({
+      // userId: { type: 'number' },
+      classId: { type: 'string' },
+    });
+    const db = this.app.mysql.get('ry');
+    const requestParams = this.ctx.request.body;
+    this.ctx.body = await db.query(studentByClassId(requestParams.classId, requestParams.status));
+  }
+
 }
 
 function keyStudentSql() {
@@ -542,6 +564,25 @@ function keyStudentSql() {
 LEFT JOIN base_student_info b ON a.student_id = b.id
 LEFT JOIN base_stutocla_info c ON c.student_id = a.student_id
 LEFT JOIN sys_dept d ON d.dept_id = c.class_id`;
+}
+
+
+function studentByClassId(classId) {
+  return `
+  SELECT
+	student.*, c.id as base
+FROM
+	base_student_info student
+	LEFT JOIN base_stutocla_info b ON student.id = b.student_id 
+	LEFT JOIN form_psychology_base c ON student.id = c.studentid
+WHERE
+	1 = 1 
+	AND b.class_id = '${classId}' 
+	AND student.STATUS = 0 
+ORDER BY
+	student.STATUS,
+	student.scode +0
+`;
 }
 
 module.exports = QingmiaoController;
